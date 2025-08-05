@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# Якщо запит на існуючий файл або папку — нічого не переписуємо
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Перенаправлення всього на index.php
+RewriteRule . index.php
+
+# Дозволити CORS (якщо API викликається з іншого домену, наприклад frontend)
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, Authorization"
