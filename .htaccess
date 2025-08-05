@@ -1,0 +1,11 @@
+RewriteEngine On
+
+# Ввімкнути мод_rewrite
+RewriteBase /
+
+# Дозволити доступ до існуючих файлів та папок
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Все інше — на index.php
+RewriteRule ^.*$ index.php [L]
