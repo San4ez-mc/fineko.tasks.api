@@ -80,11 +80,18 @@ $config = [
         'response' => [
             'format' => yii\web\Response::FORMAT_JSON,
             'charset' => 'UTF-8',
+            'formatters' => [
+                yii\web\Response::FORMAT_JSON => [
+                    'class' => yii\web\JsonResponseFormatter::class,
+                    'encodeOptions' => JSON_UNESCAPED_UNICODE,
+                ],
+            ],
             'on beforeSend' => function ($event) {
                 $response = $event->sender;
                 $response->headers->set('Access-Control-Allow-Origin', '*');
                 $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
                 $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+                $response->headers->set('Content-Type', 'application/json; charset=UTF-8');
             },
         ],
         'as cors' => [
