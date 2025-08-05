@@ -78,17 +78,24 @@ $config = [
         'response' => [
             'format' => yii\web\Response::FORMAT_JSON,
             'charset' => 'UTF-8',
+            'formatters' => [
+                yii\web\Response::FORMAT_JSON => [
+                    'class' => yii\web\JsonResponseFormatter::class,
+                    'encodeOptions' => JSON_UNESCAPED_UNICODE,
+                ],
+            ],
             'on beforeSend' => function ($event) {
                 $response = $event->sender;
                 $response->headers->set('Access-Control-Allow-Origin', '*');
                 $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
                 $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+                $response->headers->set('Content-Type', 'application/json; charset=UTF-8');
             },
         ],
         'as cors' => [
             'class' => \yii\filters\Cors::class,
             'cors' => [
-                'Origin' => ['https://ftasks.local'], // 👈 або ['*'] для всіх
+                'Origin' => ['https://ftasks.local', 'https://tasks.fineko.space'], // 👈 або ['*'] для всіх
                 'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
                 'Access-Control-Allow-Credentials' => true,
                 'Access-Control-Allow-Headers' => ['*'],
