@@ -36,11 +36,17 @@ class AuthController extends Controller
     public function actionLogin()
     {
         $model = new LoginForm();
-        $model->load(Yii::$app->request->bodyParams, '');
+        $body = Yii::$app->request->bodyParams;
+        if (isset($body['login']) && !isset($body['username'])) {
+            $body['username'] = $body['login'];
+        }
+        $model->load($body, '');
         if ($model->login()) {
             return ['success' => true, 'user' => Yii::$app->user->identity];
         }
-        return ['success' => false, 'errors' => $model->errors];
+        $errors = $model->getFirstErrors();
+        $message = reset($errors) ?: 'Invalid credentials';
+        return ['success' => false, 'message' => $message];
     }
 
     public function actionLogout()
