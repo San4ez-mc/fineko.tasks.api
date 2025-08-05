@@ -55,7 +55,6 @@ $config = [
                 [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => ['auth'],
-                    'prefix' => 'api',
                     'pluralize' => false,
                     'extraPatterns' => [
                         'POST login' => 'login',
@@ -69,11 +68,10 @@ $config = [
                 [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => ['task', 'result', 'user', 'position'],
-                    'prefix' => 'api',
                 ],
 
-                'GET api/task/by-date' => 'task/by-date',  // нове правило
-                'GET api/test' => 'test/index',
+                'GET task/by-date' => 'task/by-date',  // нове правило
+                'GET test' => 'test/index',
 
             ],
         ],
