@@ -86,9 +86,11 @@ $config = [
             ],
             'on beforeSend' => function ($event) {
                 $response = $event->sender;
-                $response->headers->set('Access-Control-Allow-Origin', '*');
-                $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-                $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+                $origin = \Yii::$app->request->headers->get('Origin');
+                if ($origin && in_array($origin, ['https://ftasks.local', 'https://tasks.fineko.space'])) {
+                    $response->headers->set('Access-Control-Allow-Origin', $origin);
+                    $response->headers->set('Access-Control-Allow-Credentials', 'true');
+                }
                 $response->headers->set('Content-Type', 'application/json; charset=UTF-8');
             },
         ],

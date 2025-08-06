@@ -13,7 +13,7 @@ class TestController extends Controller
             'corsFilter' => [
                 'class' => Cors::class,
                 'cors' => [
-                    'Origin' => ['*'],
+                    'Origin' => ['https://ftasks.local', 'https://tasks.fineko.space'],
                     'Access-Control-Request-Method' => ['GET', 'OPTIONS'],
                     'Access-Control-Allow-Credentials' => true,
                     'Access-Control-Max-Age' => 3600,
