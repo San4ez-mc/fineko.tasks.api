@@ -86,17 +86,21 @@ $config = [
             ],
             'on beforeSend' => function ($event) {
                 $response = $event->sender;
-                $response->headers->set('Access-Control-Allow-Origin', '*');
-                $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-                $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+                $origin = \Yii::$app->request->headers->get('Origin');
+                if ($origin) {
+                    $response->headers->set('Access-Control-Allow-Origin', $origin);
+                } else {
+                    $response->headers->set('Access-Control-Allow-Origin', '*');
+                }
+                $response->headers->set('Access-Control-Allow-Credentials', 'true');
                 $response->headers->set('Content-Type', 'application/json; charset=UTF-8');
             },
         ],
         'as cors' => [
             'class' => \yii\filters\Cors::class,
             'cors' => [
-                'Origin' => ['https://ftasks.local', 'https://tasks.fineko.space'], // 👈 або ['*'] для всіх
-                'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+                'Origin' => ['*'],
+                'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
                 'Access-Control-Allow-Credentials' => true,
                 'Access-Control-Allow-Headers' => ['*'],
                 'Access-Control-Max-Age' => 86400,
