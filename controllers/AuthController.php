@@ -4,7 +4,6 @@ namespace app\controllers;
 use Yii;
 use yii\rest\Controller;
 use yii\web\Response;
-use yii\filters\Cors;
 use app\models\LoginForm;
 use app\models\User;
 
@@ -16,22 +15,6 @@ class AuthController extends Controller
         return parent::beforeAction($action);
     }
 
-    public function behaviors()
-    {
-        $behaviors = parent::behaviors();
-        $behaviors['corsFilter'] = [
-            'class' => Cors::class,
-            'cors' => [
-                'Origin' => ['https://ftasks.local', 'https://tasks.fineko.space'],
-                'Access-Control-Request-Method' => ['GET', 'POST', 'OPTIONS'],
-                'Access-Control-Allow-Credentials' => true,
-                'Access-Control-Max-Age' => 3600,
-                'Access-Control-Allow-Headers' => ['Content-Type', 'Authorization'],
-                'Access-Control-Request-Headers' => ['*'],
-            ],
-        ];
-        return $behaviors;
-    }
 
     public function actionLogin()
     {
