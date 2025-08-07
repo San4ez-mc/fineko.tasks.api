@@ -11,12 +11,23 @@ $config = [
         '@bower' => '@vendor/bower-asset',
         '@npm' => '@vendor/npm-asset',
     ],
+
+    // ✅ CORS на верхньому рівні
+    'as cors' => [
+        'class' => \yii\filters\Cors::class,
+        'cors' => [
+            'Origin' => ['https://tasks.fineko.space'],
+            'Access-Control-Request-Method' => ['POST', 'GET', 'OPTIONS'],
+            'Access-Control-Allow-Credentials' => true,
+            'Access-Control-Allow-Headers' => ['Content-Type', 'Authorization', 'X-Requested-With'],
+            'Access-Control-Max-Age' => 3600,
+        ],
+    ],
+
     'components' => [
         'request' => [
-            // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
             'cookieValidationKey' => 'RnmH64wG8bRABrW3rP9QUI0kEDBdcCJz',
             'enableCsrfValidation' => false,
-
             'parsers' => [
                 'application/json' => 'yii\web\JsonParser',
             ],
@@ -34,7 +45,6 @@ $config = [
         'mailer' => [
             'class' => \yii\symfonymailer\Mailer::class,
             'viewPath' => '@app/mail',
-            // send all mails to a file by default.
             'useFileTransport' => true,
         ],
         'log' => [
@@ -64,15 +74,12 @@ $config = [
                         'POST reset-password' => 'reset-password',
                     ],
                 ],
-
                 [
                     'class' => 'yii\rest\UrlRule',
                     'controller' => ['task', 'result', 'user', 'position'],
                 ],
-
-                'GET task/by-date' => 'task/by-date',  // нове правило
+                'GET task/by-date' => 'task/by-date',
                 'GET test' => 'test/index',
-
             ],
         ],
         'response' => [
@@ -96,34 +103,18 @@ $config = [
                 $response->headers->set('Content-Type', 'application/json; charset=UTF-8');
             },
         ],
-        'as cors' => [
-            'class' => \yii\filters\Cors::class,
-            'cors' => [
-                'Origin' => ['https://tasks.fineko.space'], // ⚠️ має бути конкретний origin
-                'Access-Control-Request-Method' => ['POST', 'GET', 'OPTIONS'],
-                'Access-Control-Allow-Credentials' => true,
-                'Access-Control-Allow-Headers' => ['Content-Type', 'Authorization', 'X-Requested-With'],
-                'Access-Control-Max-Age' => 3600,
-            ],
-        ],
     ],
     'params' => $params,
 ];
 
 if (YII_ENV_DEV) {
-    // configuration adjustments for 'dev' environment
     $config['bootstrap'][] = 'debug';
     $config['modules']['debug'] = [
         'class' => 'yii\debug\Module',
-        // uncomment the following to add your IP if you are not connecting from localhost.
-        //'allowedIPs' => ['127.0.0.1', '::1'],
     ];
-
     $config['bootstrap'][] = 'gii';
     $config['modules']['gii'] = [
         'class' => 'yii\gii\Module',
-        // uncomment the following to add your IP if you are not connecting from localhost.
-        //'allowedIPs' => ['127.0.0.1', '::1'],
     ];
 }
 
