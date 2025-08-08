@@ -12,12 +12,12 @@ $config = [
         '@npm' => '@vendor/npm-asset',
     ],
 
-    // ✅ CORS на верхньому рівні
+    // ✅ CORS на верхньому рівні (залишив як у тебе)
     'as cors' => [
         'class' => \yii\filters\Cors::class,
         'cors' => [
             'Origin' => ['https://tasks.fineko.space'],
-            'Access-Control-Request-Method' => ['POST', 'GET', 'OPTIONS'],
+            'Access-Control-Request-Method' => ['POST', 'GET', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
             'Access-Control-Allow-Credentials' => true,
             'Access-Control-Allow-Headers' => ['Content-Type', 'Authorization', 'X-Requested-With'],
             'Access-Control-Max-Age' => 3600,
@@ -27,7 +27,7 @@ $config = [
     'components' => [
         'request' => [
             'cookieValidationKey' => 'RnmH64wG8bRABrW3rP9QUI0kEDBdcCJz',
-            'enableCsrfValidation' => false,
+            'enableCsrfValidation' => false, // ✅ API-режим
             'parsers' => [
                 'application/json' => 'yii\web\JsonParser',
             ],
@@ -35,9 +35,12 @@ $config = [
         'cache' => [
             'class' => 'yii\caching\FileCache',
         ],
+        // ✅ Користувач без сесій (Bearer токени)
         'user' => [
             'identityClass' => 'app\models\User',
-            'enableAutoLogin' => true,
+            'enableAutoLogin' => false,
+            'enableSession' => false,    // ✅ головне для API
+            'loginUrl' => null,
         ],
         'errorHandler' => [
             'errorAction' => 'error/index',
@@ -57,26 +60,28 @@ $config = [
             ],
         ],
         'db' => $db,
+
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
                 // Auth
                 'POST auth/login' => 'auth/login',
+                'POST auth/refresh' => 'auth/refresh', // ✅ додано
 
-                // Results CRUD
+                // Results CRUD (як було)
                 'GET results' => 'result/index',
                 'POST results' => 'result/create',
                 'GET results/<id:\d+>' => 'result/view',
                 'PUT results/<id:\d+>' => 'result/update',
                 'PATCH results/<id:\d+>' => 'result/update',
                 'DELETE results/<id:\d+>' => 'result/delete',
-
-                // Toggle complete (дозволяємо і PATCH, і POST)
                 'PATCH results/<id:\d+>/complete' => 'result/complete',
                 'POST  results/<id:\d+>/complete' => 'result/complete',
             ],
         ],
+
+        // Відповіді JSON (залишив і розширив)
         'response' => [
             'format' => yii\web\Response::FORMAT_JSON,
             'charset' => 'UTF-8',
@@ -104,13 +109,9 @@ $config = [
 
 if (YII_ENV_DEV) {
     $config['bootstrap'][] = 'debug';
-    $config['modules']['debug'] = [
-        'class' => 'yii\debug\Module',
-    ];
+    $config['modules']['debug'] = ['class' => 'yii\debug\Module'];
     $config['bootstrap'][] = 'gii';
-    $config['modules']['gii'] = [
-        'class' => 'yii\gii\Module',
-    ];
+    $config['modules']['gii'] = ['class' => 'yii\gii\Module'];
 }
 
 return $config;
