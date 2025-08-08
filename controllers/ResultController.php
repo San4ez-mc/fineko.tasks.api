@@ -3,27 +3,45 @@
 namespace app\controllers;
 
 use Yii;
-use yii\rest\ActiveController;
 use yii\data\ActiveDataProvider;
+use yii\web\BadRequestHttpException;
+use yii\web\NotFoundHttpException;
 use app\models\Result;
 
 class ResultController extends ApiController
 {
-    public $modelClass = 'app\models\Result';
-
     /**
-     * GET /results — лише свої
+     * GET /results
+     * Повертає тільки результати поточного користувача
      */
     public function actionIndex()
     {
         return new ActiveDataProvider([
             'query' => Result::find()->where(['user_id' => Yii::$app->user->id]),
-            'pagination' => ['pageSize' => 100],
+            'pagination' => [
+                'pageSize' => (int) Yii::$app->request->get('per-page', 25),
+            ],
         ]);
     }
 
     /**
-     * POST /results — створення результату
+     * GET /results/{id}
+     */
+    public function actionView($id)
+    {
+        $model = Result::find()
+            ->where(['id' => (int) $id, 'user_id' => Yii::$app->user->id])
+            ->one();
+
+        if (!$model) {
+            throw new NotFoundHttpException('Result not found.');
+        }
+        return $model;
+    }
+
+    /**
+     * POST /results
+     * body: { title, description?, expected_result?, deadline?, parent_id? }
      */
     public function actionCreate()
     {
@@ -34,39 +52,28 @@ class ResultController extends ApiController
         if ($model->save()) {
             return $model;
         }
-
-        return $model->getErrors();
+        return ['success' => false, 'errors' => $model->getErrors()];
     }
 
     /**
-     * GET /results/{id}
-     */
-    public function actionView($id)
-    {
-        return Result::find()
-            ->where(['id' => $id, 'user_id' => Yii::$app->user->id])
-            ->one();
-    }
-
-    /**
-     * PUT/PATCH /results/{id}
+     * PATCH /results/{id}
+     * body: часткове оновлення
      */
     public function actionUpdate($id)
     {
         $model = Result::find()
-            ->where(['id' => $id, 'user_id' => Yii::$app->user->id])
+            ->where(['id' => (int) $id, 'user_id' => Yii::$app->user->id])
             ->one();
 
         if (!$model) {
-            return ['error' => 'Not found'];
+            throw new NotFoundHttpException('Result not found.');
         }
 
         $model->load(Yii::$app->request->bodyParams, '');
         if ($model->save()) {
             return $model;
         }
-
-        return $model->getErrors();
+        return ['success' => false, 'errors' => $model->getErrors()];
     }
 
     /**
@@ -75,13 +82,42 @@ class ResultController extends ApiController
     public function actionDelete($id)
     {
         $model = Result::find()
-            ->where(['id' => $id, 'user_id' => Yii::$app->user->id])
+            ->where(['id' => (int) $id, 'user_id' => Yii::$app->user->id])
             ->one();
 
-        if ($model && $model->delete()) {
-            return ['success' => true];
+        if (!$model) {
+            throw new NotFoundHttpException('Result not found.');
         }
 
+        if ($model->delete() !== false) {
+            return ['success' => true];
+        }
+        return ['success' => false];
+    }
+
+    /**
+     * POST /results/{id}/complete
+     * body: { is_completed: true|false }
+     */
+    public function actionComplete($id)
+    {
+        $isCompleted = Yii::$app->request->bodyParams['is_completed'] ?? null;
+        if ($isCompleted === null) {
+            throw new BadRequestHttpException('Field "is_completed" is required.');
+        }
+
+        $model = Result::find()
+            ->where(['id' => (int) $id, 'user_id' => Yii::$app->user->id])
+            ->one();
+
+        if (!$model) {
+            throw new NotFoundHttpException('Result not found.');
+        }
+
+        $model->is_completed = (bool) $isCompleted;
+        if ($model->save(false)) {
+            return ['success' => true, 'is_completed' => $model->is_completed];
+        }
         return ['success' => false];
     }
 }
