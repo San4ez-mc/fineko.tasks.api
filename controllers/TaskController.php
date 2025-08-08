@@ -46,7 +46,7 @@ class TaskController extends Controller
             $query->andWhere(['creator' => $creator]);
         }
 
-        $tasks = $query->orderBy(['deadline_date' => ($sort === 'desc' ? SORT_DESC : SORT_ASC)])
+        $tasks = $query->orderBy(['planned_date' => ($sort === 'desc' ? SORT_DESC : SORT_ASC)])
             ->asArray()
             ->all();
 

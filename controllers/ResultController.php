@@ -2,75 +2,194 @@
 
 namespace app\controllers;
 
-use Yii;
-use yii\data\ActiveDataProvider;
-use yii\rest\ActiveController;
-use yii\web\Response;
 use app\models\Result;
+use app\models\search\ResultSearch;
+use Yii;
+use yii\filters\AccessControl;
+use yii\filters\Cors;
+use yii\filters\VerbFilter;
+use yii\web\BadRequestHttpException;
+use yii\web\Controller;
+use yii\web\NotFoundHttpException;
+use yii\web\Response;
 
-class ResultController extends ActiveController
+class ResultController extends Controller
 {
-    public $modelClass = 'app\models\Result';
-
-    public function actions()
+    public function behaviors()
     {
-        $actions = parent::actions();
-        unset($actions['index']);
-        return $actions;
+        $behaviors = parent::behaviors();
+
+        // CORS (важливо: конкретний origin, не '*')
+        $behaviors['corsFilter'] = [
+            'class' => Cors::class,
+            'cors' => [
+                'Origin' => ['https://tasks.fineko.space'],
+                'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+                'Access-Control-Allow-Credentials' => true,
+                'Access-Control-Request-Headers' => ['*'],
+            ],
+        ];
+
+        $behaviors['verbs'] = [
+            'class' => VerbFilter::class,
+            'actions' => [
+                'index' => ['GET', 'OPTIONS'],
+                'view' => ['GET', 'OPTIONS'],
+                'create' => ['POST', 'OPTIONS'],
+                'update' => ['PUT', 'PATCH', 'OPTIONS'],
+                'delete' => ['DELETE', 'OPTIONS'],
+                'complete' => ['PATCH', 'OPTIONS'],
+            ],
+        ];
+
+        // Якщо потрібна авторизація — додай тут AccessControl/JWT тощо
+        $behaviors['access'] = [
+            'class' => AccessControl::class,
+            'only' => ['index', 'view', 'create', 'update', 'delete', 'complete'],
+            'rules' => [
+                [
+                    'allow' => true,
+                    'roles' => ['@'], // авторизовані
+                ],
+            ],
+        ];
+
+        return $behaviors;
+    }
+
+    public function beforeAction($action)
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        return parent::beforeAction($action);
     }
 
     /**
-     * Повертає список результатів з пагінацією, сортуванням та фільтрами
-     * Виклик: GET /index.php?r=result/index&date=2025-07-24&type=normal&set_date=2025-07-20&creator=1&sort=asc&page=1&per-page=10
+     * GET /results?q=&status=active|done&dueFrom=YYYY-MM-DD&dueTo=YYYY-MM-DD&parent_id=&page=&per-page=
      */
     public function actionIndex()
     {
-        Yii::$app->response->format = Response::FORMAT_JSON;
-
-        $request = Yii::$app->request;
-        $date = $request->get('date');
-        $setDate = $request->get('set_date');
-        $creator = $request->get('creator');
-        $type = $request->get('type');
-        $sort = $request->get('sort', 'asc');
-        $page = max((int)$request->get('page', 1), 1);
-        $perPage = (int)$request->get('per-page', 20);
-
-        $query = Result::find();
-
-        if (!empty($date)) {
-            $query->andWhere(['deadline' => $date]);
-        }
-
-        if (!empty($setDate)) {
-            $start = strtotime($setDate . ' 00:00:00');
-            $end = strtotime($setDate . ' 23:59:59');
-            $query->andWhere(['between', 'created_at', $start, $end]);
-        }
-
-        if (!empty($creator)) {
-            $query->andWhere(['created_by' => $creator]);
-        }
-
-        if (!empty($type)) {
-            $query->andWhere(['type' => $type]);
-        }
-
-        $query->orderBy(['type' => $sort === 'desc' ? SORT_DESC : SORT_ASC]);
-
-        $provider = new ActiveDataProvider([
-            'query' => $query,
-            'pagination' => [
-                'page' => $page - 1,
-                'pageSize' => $perPage,
-            ],
-        ]);
+        $search = new ResultSearch();
+        $provider = $search->search(Yii::$app->request->queryParams);
 
         return [
-            'total_count' => $provider->getTotalCount(),
-            'page' => $page,
-            'per_page' => $perPage,
-            'results' => array_map(fn($model) => $model->toArray(), $provider->getModels()),
+            'items' => array_map(function (Result $m) {
+                return $m->toArray(); }, $provider->getModels()),
+            'pagination' => [
+                'totalCount' => $provider->getTotalCount(),
+                'pageSize' => $provider->getPagination()->getPageSize(),
+                'page' => $provider->getPagination()->getPage() + 1,
+                'pageCount' => $provider->getPagination()->getPageCount(),
+            ],
         ];
+    }
+
+    /**
+     * GET /results/{id}
+     */
+    public function actionView($id)
+    {
+        $model = $this->findModel($id);
+        return $model->toArray([], ['children', 'tasks']);
+    }
+
+    /**
+     * POST /results
+     * body: { title, description?, deadline?, parent_id? }
+     */
+    public function actionCreate()
+    {
+        $body = Yii::$app->request->bodyParams;
+        $model = new Result();
+
+        // Заповнюємо обов’язкове поле організації (з користувача)
+        if (!Yii::$app->user->isGuest && property_exists(Yii::$app->user->identity, 'organization_id')) {
+            $model->organization_id = Yii::$app->user->identity->organization_id;
+        } else {
+            // fallback: можна дозволити явну передачу organization_id
+            if (isset($body['organization_id'])) {
+                $model->organization_id = (int) $body['organization_id'];
+            }
+        }
+
+        $model->owner_id = $body['owner_id'] ?? null;
+        $model->parent_id = $body['parent_id'] ?? null;
+        $model->title = $body['title'] ?? null;
+        $model->description = $body['description'] ?? null;
+        $model->deadline = $body['deadline'] ?? null;
+
+        if ($model->save()) {
+            return $model->toArray();
+        }
+
+        Yii::$app->response->statusCode = 422;
+        return ['errors' => $model->getErrors()];
+    }
+
+    /**
+     * PUT/PATCH /results/{id}
+     */
+    public function actionUpdate($id)
+    {
+        $model = $this->findModel($id);
+        $body = Yii::$app->request->bodyParams;
+
+        $model->owner_id = $body['owner_id'] ?? $model->owner_id;
+        $model->parent_id = array_key_exists('parent_id', $body) ? $body['parent_id'] : $model->parent_id;
+        $model->title = $body['title'] ?? $model->title;
+        $model->description = $body['description'] ?? $model->description;
+        $model->deadline = $body['deadline'] ?? $model->deadline;
+
+        if ($model->save()) {
+            return $model->toArray();
+        }
+
+        Yii::$app->response->statusCode = 422;
+        return ['errors' => $model->getErrors()];
+    }
+
+    /**
+     * PATCH /results/{id}/complete
+     * body: { is_completed: true|false }
+     */
+    public function actionComplete($id)
+    {
+        $model = $this->findModel($id);
+        $body = Yii::$app->request->bodyParams;
+
+        if (!array_key_exists('is_completed', $body)) {
+            throw new BadRequestHttpException('Missing is_completed');
+        }
+
+        $model->completed_at = $body['is_completed'] ? date('Y-m-d H:i:s') : null;
+
+        if ($model->save(false, ['completed_at', 'updated_at'])) {
+            return $model->toArray();
+        }
+
+        Yii::$app->response->statusCode = 422;
+        return ['errors' => $model->getErrors()];
+    }
+
+    /**
+     * DELETE /results/{id}
+     */
+    public function actionDelete($id)
+    {
+        $model = $this->findModel($id);
+        if ($model->delete() !== false) {
+            return ['success' => true];
+        }
+        Yii::$app->response->statusCode = 500;
+        return ['success' => false];
+    }
+
+    protected function findModel($id): Result
+    {
+        $model = Result::findOne((int) $id);
+        if (!$model) {
+            throw new NotFoundHttpException('Result not found');
+        }
+        // опційно: перевірка organization_id == користувача
+        return $model;
     }
 }
