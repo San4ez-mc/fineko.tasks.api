@@ -1,8 +1,7 @@
-Options FollowSymLinks
-IndexIgnore */*
+# Мінімалістичний і сумісний з Hosting Ukraine варіант
 RewriteEngine On
 
-# Віддавати напряму існуючі файли
+# Віддавати статичні файли/папки напряму
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
@@ -11,5 +10,5 @@ RewriteRule ^ - [L]
 RewriteCond %{REQUEST_METHOD} OPTIONS
 RewriteRule ^ index.php [L]
 
-# Інші запити — у front controller Yii2
+# Все інше — у Yii front controller
 RewriteRule ^ index.php [L]

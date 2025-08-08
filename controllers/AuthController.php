@@ -18,13 +18,9 @@ class AuthController extends ApiController
         $behaviors = parent::behaviors();
         // ✅ login/refresh/telegram/reset — доступні без токена
         if (isset($behaviors['authenticator'])) {
-            $behaviors['authenticator']['except'] = [
-                'login',
-                'refresh',
-                'request-password-reset',
-                'reset-password',
-                'telegram-login',
-                'options'
+            $behaviors['authenticator'] = [
+                'class' => \yii\filters\auth\HttpBearerAuth::class,
+                'except' => ['options', 'login', 'refresh', 'request-password-reset', 'reset-password'],
             ];
         }
         return $behaviors;

@@ -51,6 +51,9 @@ return [
                 'PATCH results/<id:\d+>' => 'result/update',
                 'DELETE results/<id:\d+>' => 'result/delete',
                 'POST results/<id:\d+>/complete' => 'result/complete',
+
+                // ◀️ Catch‑all для будь-якого preflight
+                ['pattern' => '<path:.*>', 'route' => 'site/options', 'verb' => 'OPTIONS'],
             ],
         ],
     ],
