@@ -38,18 +38,6 @@ class AuthController extends \app\controllers\ApiController
             'reset-password' => ['POST'],
         ]);
     }
-    public function behaviors()
-    {
-        $behaviors = parent::behaviors();
-        // ✅ login/refresh/telegram/reset — доступні без токена
-        if (isset($behaviors['authenticator'])) {
-            $behaviors['authenticator'] = [
-                'class' => \yii\filters\auth\HttpBearerAuth::class,
-                'except' => ['options', 'login', 'refresh', 'request-password-reset', 'reset-password'],
-            ];
-        }
-        return $behaviors;
-    }
 
     public function beforeAction($action)
     {
