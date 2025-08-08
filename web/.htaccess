@@ -1,13 +1,22 @@
+Options -Indexes
 RewriteEngine On
 
-# Якщо запит на існуючий файл або папку — нічого не переписуємо
+# --- CORS preflight: віддаємо на index.php, де Yii виставить заголовки і 200 OK ---
+RewriteCond %{REQUEST_METHOD} =OPTIONS
+RewriteRule ^(.*)$ index.php [L]
+
+# --- Стандартний Yii2 роутинг ---
+# якщо файл або директорія існують — віддаємо напряму
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
+# все інше — в index.php
+RewriteRule . index.php [L]
 
-# Перенаправлення всього на index.php
-RewriteRule . index.php
-
-# Дозволити CORS (якщо API викликається з іншого домену, наприклад frontend)
-Header set Access-Control-Allow-Origin "*"
-Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+# --- (необовʼязково) Якщо модуль headers увімкнений, дублюємо заголовки на рівні веб-сервера ---
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With"
+    # УВАГА: Origin краще виставляти динамічно в PHP. Якщо хочеш жорстко:
+    # Header always set Access-Control-Allow-Origin "https://ftasks.local"
+</IfModule>
