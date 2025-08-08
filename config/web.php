@@ -28,11 +28,22 @@ return [
         ],
         'db' => $db,
         'log' => [
+            // У dev покажемо максимум контексту
             'traceLevel' => YII_DEBUG ? 3 : 0,
+            'flushInterval' => 1,
             'targets' => [
                 [
                     'class' => yii\log\FileTarget::class,
-                    'levels' => ['error', 'warning'],
+                    'logFile' => '@app/runtime/logs/app.log',
+                    'levels' => ['error', 'warning', 'info'],
+                    'categories' => [
+                        'application',          // наші Yii::info/::error
+                        'yii\db\Command::query',
+                        'yii\db\Command::execute',
+                        'yii\web\HttpException:*',
+                    ],
+                    'logVars' => [],          // не писати глобальні $_SERVER повністю
+                    'exportInterval' => 1,    // писати одразу
                 ],
             ],
         ],
@@ -52,19 +63,19 @@ return [
                 'DELETE results/<id:\d+>' => 'result/delete',
                 'POST results/<id:\d+>/complete' => 'result/complete',
 
-                // ◀️ Catch‑all для будь-якого preflight
+                // catch‑all preflight
                 ['pattern' => '<path:.*>', 'route' => 'site/options', 'verb' => 'OPTIONS'],
             ],
         ],
     ],
 
+    // Глобальний CORS (білий список)
     'as corsFilter' => [
         'class' => Cors::class,
         'cors' => [
             'Origin' => [
                 'https://tasks.fineko.space',
                 'http://ftasks.local',
-                'http://localhost:3000',
             ],
             'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
             'Access-Control-Request-Headers' => ['Authorization', 'Content-Type', 'X-Requested-With'],
@@ -74,8 +85,21 @@ return [
         ],
     ],
 
+    // Всі відповіді JSON + лог запиту (без токена)
     'on beforeRequest' => function () {
         Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $req = Yii::$app->request;
+        $auth = $req->headers->get('Authorization', '');
+        $masked = $auth ? (substr($auth, 0, 16) . '…') : '';
+        Yii::info(sprintf(
+            '[%s] %s %s | Origin=%s | Auth=%s',
+            date('Y-m-d H:i:s'),
+            $req->method,
+            $req->url,
+            $req->headers->get('Origin', '-'),
+            $masked
+        ), 'application');
     },
 
     'params' => [],
