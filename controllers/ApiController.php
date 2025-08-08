@@ -2,9 +2,10 @@
 
 namespace app\controllers;
 
+use Yii;
+use yii\rest\Controller;
 use yii\filters\Cors;
 use yii\filters\auth\HttpBearerAuth;
-use yii\rest\Controller;
 
 class ApiController extends Controller
 {
@@ -12,28 +13,39 @@ class ApiController extends Controller
     {
         $behaviors = parent::behaviors();
 
-        // ✅ CORS — до аутентифікації
+        // 1) CORS має бути ДО автентифікатора
         $behaviors['corsFilter'] = [
             'class' => Cors::class,
             'cors' => [
-                'Origin' => ['https://tasks.fineko.space'],
+                // Дозволені фронтенд-ориджі (додай інші за потреби)
+                'Origin' => ['https://ftasks.local', 'https://tasks.fineko.space'],
                 'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+                'Access-Control-Request-Headers' => ['*'],
                 'Access-Control-Allow-Credentials' => true,
-                'Access-Control-Allow-Headers' => ['Authorization', 'Content-Type', 'X-Requested-With'],
                 'Access-Control-Max-Age' => 86400,
             ],
         ];
 
-        // ✅ Bearer — за замовчуванням для всіх екшенів
+        // 2) Bearer-автентифікація — після CORS; preflight виключаємо
         $behaviors['authenticator'] = [
             'class' => HttpBearerAuth::class,
-            'except' => ['options'], // конкретні виключення робимо у дочірніх контролерах
+            'except' => ['options'], // інші винятки (login/refresh) задаємо в конкретних контролерах
         ];
 
         return $behaviors;
     }
 
-    // ✅ Preflight
+    // 3) Явно віддаємо 200 на preflight, не чіпаючи автентифікацію
+    public function beforeAction($action)
+    {
+        if (Yii::$app->request->isOptions) {
+            Yii::$app->response->statusCode = 200;
+            return false;
+        }
+        return parent::beforeAction($action);
+    }
+
+    // 4) Додаємо стандартну OptionsAction на випадок прямого виклику /xxx/options
     public function actions()
     {
         return [
