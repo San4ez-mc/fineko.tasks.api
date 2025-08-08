@@ -110,4 +110,21 @@ class User extends ActiveRecord implements IdentityInterface
     {
         $this->password_reset_token = null;
     }
+
+    public function generateAccessToken($expire = 3600)
+    {
+        $this->access_token = Yii::$app->security->generateRandomString();
+        $this->access_token_expire = time() + $expire;
+        $this->save(false);
+        return $this->access_token;
+    }
+
+    public function generateRefreshToken($expire = 2592000) // 30 днів
+    {
+        $this->refresh_token = Yii::$app->security->generateRandomString();
+        $this->refresh_token_expire = time() + $expire;
+        $this->save(false);
+        return $this->refresh_token;
+    }
+
 }
