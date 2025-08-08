@@ -11,8 +11,33 @@ use app\models\User;
  * Авторизація через Bearer токени (без сесій).
  * Залишено твої методи reset/telegram, але login переписано під токени.
  */
-class AuthController extends ApiController
+class AuthController extends \app\controllers\ApiController
 {
+    // Додай/онови behaviors так, щоб винятки не вимагали токена
+    public function behaviors()
+    {
+        $b = parent::behaviors();
+        // перезаписуємо список винятків для автентифікації
+        $b['authenticator']['except'] = [
+            'options',
+            'login',
+            'refresh',
+            'request-password-reset',
+            'reset-password',
+        ];
+        return $b;
+    }
+
+    // Додай verbs (методи для дій)
+    public function verbs()
+    {
+        return array_merge(parent::verbs(), [
+            'login' => ['POST'],
+            'refresh' => ['POST'],
+            'request-password-reset' => ['POST'],
+            'reset-password' => ['POST'],
+        ]);
+    }
     public function behaviors()
     {
         $behaviors = parent::behaviors();

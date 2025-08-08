@@ -2,24 +2,27 @@
 namespace app\controllers;
 
 use Yii;
-use yii\web\Controller;
+use yii\rest\Controller;
 use yii\filters\Cors;
 use yii\filters\auth\HttpBearerAuth;
 
 /**
- * Базовий контролер для всіх API-контролерів.
- * Дає: CORS, Bearer auth, OPTIONS handler.
+ * Базовий API-контролер: CORS, Bearer-автентифікація, OPTIONS 200.
+ * Усі інші контролери успадковуються від нього.
  */
-abstract class piController extends Controller
+class ApiController extends Controller
 {
     /**
-     * Додаткові винятки з авторизації для конкретного контролера.
-     * ДОДАВАЙ у дочірньому класі: public $authExcept = ['options', 'login', ...];
+     * Які дії НЕ потребують авторизації (дочірні контролери можуть перевизначити).
      */
-    public $authExcept = ['options'];
+    protected function authExcept(): array
+    {
+        // Preflight має проходити завжди
+        return ['options'];
+    }
 
     /**
-     * Декларуємо дозволені методи. У дочірньому можна перевизначити або доповнити (merge з parent::verbs()).
+     * Дозволені методи за замовчуванням.
      */
     public function verbs()
     {
@@ -32,25 +35,67 @@ abstract class piController extends Controller
     {
         $behaviors = parent::behaviors();
 
-        // CORS: глобальний фільтр у web.php вже є, але дублювання тут не шкодить і підстраховує
+        // 1) CORS — перед автентифікацією
         $behaviors['corsFilter'] = [
             'class' => Cors::class,
+            'cors' => [
+                // ВАЖЛИВО: локальний домен без https
+                'Origin' => [
+                    'https://tasks.fineko.space',
+                    'http://ftasks.local',
+                    // якщо треба dev CRA:
+                    // 'http://localhost:3000',
+                ],
+                'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+                'Access-Control-Request-Headers' => ['Authorization', 'Content-Type', 'X-Requested-With'],
+                // Ми не використовуємо cookies → креденшали не потрібні
+                'Access-Control-Allow-Credentials' => false,
+                'Access-Control-Max-Age' => 86400,
+                'Access-Control-Expose-Headers' => ['Content-Type'],
+            ],
         ];
 
-        // Bearer‑автентифікація з винятками (логін/відновлення тощо задаєш у дочірньому контролері)
+        // 2) Bearer auth — після CORS, з винятками
         $behaviors['authenticator'] = [
             'class' => HttpBearerAuth::class,
-            'except' => $this->authExcept,
+            'except' => $this->authExcept(),
         ];
 
         return $behaviors;
     }
 
     /**
-     * Універсальна відповідь на preflight
+     * Гарантований 200 OK на preflight (без заходу в екшени/автентифікацію).
      */
-    public function actionOptions()
+    public function beforeAction($action)
     {
-        return 'ok';
+        if (Yii::$app->request->isOptions) {
+            Yii::$app->response->statusCode = 200;
+            // Додатково виставимо ACAO під конкретний Origin (на випадок, якщо сервер не прокинув)
+            $origin = Yii::$app->request->headers->get('Origin');
+            $allowed = ['https://tasks.fineko.space', 'http://ftasks.local'];
+            if ($origin && in_array($origin, $allowed, true)) {
+                $h = Yii::$app->response->headers;
+                $h->set('Access-Control-Allow-Origin', $origin);
+                $h->set('Vary', 'Origin');
+                $h->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+                $h->set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Requested-With');
+                // Креденшали не виставляємо, бо вони вимкнені
+            }
+            return false;
+        }
+        return parent::beforeAction($action);
+    }
+
+    /**
+     * Handler для /.../options (на випадок прямого виклику)
+     */
+    public function actions()
+    {
+        return [
+            'options' => [
+                'class' => 'yii\rest\OptionsAction',
+            ],
+        ];
     }
 }
