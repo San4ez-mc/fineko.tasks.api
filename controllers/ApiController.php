@@ -1,72 +1,56 @@
 <?php
-
 namespace app\controllers;
 
 use Yii;
-use yii\rest\Controller;
+use yii\web\Controller;
 use yii\filters\Cors;
 use yii\filters\auth\HttpBearerAuth;
 
-class ApiController extends Controller
+/**
+ * Базовий контролер для всіх API-контролерів.
+ * Дає: CORS, Bearer auth, OPTIONS handler.
+ */
+abstract class piController extends Controller
 {
+    /**
+     * Додаткові винятки з авторизації для конкретного контролера.
+     * ДОДАВАЙ у дочірньому класі: public $authExcept = ['options', 'login', ...];
+     */
+    public $authExcept = ['options'];
+
+    /**
+     * Декларуємо дозволені методи. У дочірньому можна перевизначити або доповнити (merge з parent::verbs()).
+     */
+    public function verbs()
+    {
+        return [
+            'options' => ['OPTIONS'],
+        ];
+    }
+
     public function behaviors()
     {
         $behaviors = parent::behaviors();
 
-        // 1) CORS — ОБОВʼЯЗКОВО ДО автентифікатора
+        // CORS: глобальний фільтр у web.php вже є, але дублювання тут не шкодить і підстраховує
         $behaviors['corsFilter'] = [
             'class' => Cors::class,
-            'cors' => [
-                // Фронтенд-ориджі, з яких дозволяємо звернення
-                'Origin' => ['https://ftasks.local', 'https://tasks.fineko.space'],
-                'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-                'Access-Control-Request-Headers' => ['*'], // або вкажи список: ['Authorization','Content-Type','X-Requested-With']
-                'Access-Control-Allow-Credentials' => true,
-                'Access-Control-Max-Age' => 86400,
-            ],
         ];
 
-        // 2) Bearer-автентифікація — ПІСЛЯ CORS
-        //    preflight (OPTIONS) не потребує токена
+        // Bearer‑автентифікація з винятками (логін/відновлення тощо задаєш у дочірньому контролері)
         $behaviors['authenticator'] = [
             'class' => HttpBearerAuth::class,
-            'except' => ['options'], // для login/refresh винятки робимо в їхньому контролері
+            'except' => $this->authExcept,
         ];
 
         return $behaviors;
     }
 
     /**
-     * Віддаємо 200 на preflight (OPTIONS) та не заходимо в екшени/автентифікатор.
+     * Універсальна відповідь на preflight
      */
-    public function beforeAction($action)
+    public function actionOptions()
     {
-        if (Yii::$app->request->isOptions) {
-            Yii::$app->response->statusCode = 200;
-            // Додатково гарантуємо заголовки (на випадок, якщо вебсервер їх не підставив)
-            $origin = Yii::$app->request->headers->get('Origin');
-            if (in_array($origin, ['https://ftasks.local', 'https://tasks.fineko.space'], true)) {
-                $h = Yii::$app->response->headers;
-                $h->set('Access-Control-Allow-Origin', $origin);
-                $h->set('Access-Control-Allow-Credentials', 'true');
-                $h->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-                $h->set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Requested-With');
-                $h->set('Vary', 'Origin');
-            }
-            return false;
-        }
-        return parent::beforeAction($action);
-    }
-
-    /**
-     * На випадок прямого звернення до /xxx/options
-     */
-    public function actions()
-    {
-        return [
-            'options' => [
-                'class' => 'yii\rest\OptionsAction',
-            ],
-        ];
+        return 'ok';
     }
 }

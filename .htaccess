@@ -1,14 +1,13 @@
-# Мінімалістичний і сумісний з Hosting Ukraine варіант
 RewriteEngine On
 
-# Віддавати статичні файли/папки напряму
+# Статика як є
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Пропускаємо preflight (OPTIONS) у front controller
+# Preflight (OPTIONS) -> front controller
 RewriteCond %{REQUEST_METHOD} OPTIONS
 RewriteRule ^ index.php [L]
 
-# Все інше — у Yii front controller
+# Усі інші запити -> front controller Yii2 у корені
 RewriteRule ^ index.php [L]
