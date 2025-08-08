@@ -9,14 +9,15 @@ use yii\db\ActiveRecord;
 /**
  * @property int $id
  * @property int $organization_id
- * @property int|null $owner_id
- * @property int|null $parent_id
  * @property string $title
  * @property string|null $description
- * @property string|null $deadline      // DATETIME/DATE
- * @property string|null $completed_at  // DATETIME
- * @property string|null $created_at
- * @property string|null $updated_at
+ * @property string|null $expected_result
+ * @property string|null $deadline        // DATE (Y-m-d)
+ * @property int|null $created_by
+ * @property int|null $created_at
+ * @property int|null $updated_at
+ * @property int|null $parent_id
+ * @property int|null $completed_at
  *
  * @property Result|null $parent
  * @property Result[] $children
@@ -33,9 +34,9 @@ class Result extends ActiveRecord
     {
         return [
             [['organization_id', 'title'], 'required'],
-            [['organization_id', 'owner_id', 'parent_id'], 'integer'],
-            [['description'], 'string'],
-            [['deadline', 'completed_at', 'created_at', 'updated_at'], 'safe'],
+            [['organization_id', 'created_by', 'created_at', 'updated_at', 'parent_id', 'completed_at'], 'integer'],
+            [['description', 'expected_result'], 'string'],
+            [['deadline'], 'date', 'format' => 'php:Y-m-d'],
             [['title'], 'string', 'max' => 255],
             [['parent_id'], 'validateParent'],
         ];
@@ -51,14 +52,19 @@ class Result extends ActiveRecord
     public function fields()
     {
         $fields = parent::fields();
+
         $fields['children_count'] = function () {
-            return (int) $this->getChildren()->count(); };
+            return (int) $this->getChildren()->count();
+        };
         $fields['tasks_total'] = function () {
-            return (int) $this->getTasks()->count(); };
+            return (int) $this->getTasks()->count();
+        };
         $fields['tasks_done'] = function () {
-            return (int) $this->getTasks()->andWhere(['status' => 'done'])->count(); };
+            return (int) $this->getTasks()->andWhere(['status' => 'done'])->count();
+        };
         $fields['is_completed'] = function () {
-            return $this->completed_at !== null; };
+            return $this->completed_at !== null;
+        };
 
         return $fields;
     }
@@ -75,7 +81,6 @@ class Result extends ActiveRecord
 
     public function getTasks(): ActiveQuery
     {
-        // Якщо у твоєму проекті інша назва моделі — заміни app\models\Task на актуальну
         return $this->hasMany(Task::class, ['result_id' => 'id']);
     }
 
@@ -83,17 +88,20 @@ class Result extends ActiveRecord
     {
         if ($this->isNewRecord) {
             if (!$this->organization_id && !Yii::$app->user->isGuest) {
-                /** @var User $user */
                 $user = Yii::$app->user->identity;
-                $this->organization_id = $user->organization_id ?? $this->organization_id;
+                if (isset($user->organization_id)) {
+                    $this->organization_id = (int) $user->organization_id;
+                }
+            }
+            if (!$this->created_by && !Yii::$app->user->isGuest && isset(Yii::$app->user->id)) {
+                $this->created_by = (int) Yii::$app->user->id;
             }
         }
         return parent::beforeValidate();
     }
-
     public function beforeSave($insert)
     {
-        $now = date('Y-m-d H:i:s');
+        $now = time();
         if ($insert) {
             $this->created_at = $now;
         }

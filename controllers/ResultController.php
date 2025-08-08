@@ -19,11 +19,11 @@ class ResultController extends Controller
     {
         $behaviors = parent::behaviors();
 
-        // CORS (важливо: конкретний origin, не '*')
+        // CORS
         $behaviors['corsFilter'] = [
             'class' => Cors::class,
             'cors' => [
-                'Origin' => ['https://tasks.fineko.space'],
+                'Origin' => ['https://tasks.fineko.space', 'http://localhost', 'http://127.0.0.1'],
                 'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
                 'Access-Control-Allow-Credentials' => true,
                 'Access-Control-Request-Headers' => ['*'],
@@ -38,18 +38,17 @@ class ResultController extends Controller
                 'create' => ['POST', 'OPTIONS'],
                 'update' => ['PUT', 'PATCH', 'OPTIONS'],
                 'delete' => ['DELETE', 'OPTIONS'],
-                'complete' => ['PATCH', 'OPTIONS'],
+                'complete' => ['PATCH', 'POST', 'OPTIONS'], // POST як запаска
             ],
         ];
 
-        // Якщо потрібна авторизація — додай тут AccessControl/JWT тощо
         $behaviors['access'] = [
             'class' => AccessControl::class,
             'only' => ['index', 'view', 'create', 'update', 'delete', 'complete'],
             'rules' => [
                 [
                     'allow' => true,
-                    'roles' => ['@'], // авторизовані
+                    'roles' => ['@'],
                 ],
             ],
         ];
@@ -63,9 +62,6 @@ class ResultController extends Controller
         return parent::beforeAction($action);
     }
 
-    /**
-     * GET /results?q=&status=active|done&dueFrom=YYYY-MM-DD&dueTo=YYYY-MM-DD&parent_id=&page=&per-page=
-     */
     public function actionIndex()
     {
         $search = new ResultSearch();
@@ -83,39 +79,29 @@ class ResultController extends Controller
         ];
     }
 
-    /**
-     * GET /results/{id}
-     */
     public function actionView($id)
     {
         $model = $this->findModel($id);
         return $model->toArray([], ['children', 'tasks']);
     }
 
-    /**
-     * POST /results
-     * body: { title, description?, deadline?, parent_id? }
-     */
     public function actionCreate()
     {
         $body = Yii::$app->request->bodyParams;
         $model = new Result();
 
-        // Заповнюємо обов’язкове поле організації (з користувача)
         if (!Yii::$app->user->isGuest && property_exists(Yii::$app->user->identity, 'organization_id')) {
-            $model->organization_id = Yii::$app->user->identity->organization_id;
-        } else {
-            // fallback: можна дозволити явну передачу organization_id
-            if (isset($body['organization_id'])) {
-                $model->organization_id = (int) $body['organization_id'];
-            }
+            $model->organization_id = (int) Yii::$app->user->identity->organization_id;
+        } elseif (isset($body['organization_id'])) {
+            $model->organization_id = (int) $body['organization_id'];
         }
 
-        $model->owner_id = $body['owner_id'] ?? null;
+        // created_by ставиться в beforeValidate з user->id
         $model->parent_id = $body['parent_id'] ?? null;
         $model->title = $body['title'] ?? null;
         $model->description = $body['description'] ?? null;
-        $model->deadline = $body['deadline'] ?? null;
+        $model->expected_result = $body['expected_result'] ?? null;
+        $model->deadline = $body['deadline'] ?? null; // 'YYYY-MM-DD'
 
         if ($model->save()) {
             return $model->toArray();
@@ -125,18 +111,15 @@ class ResultController extends Controller
         return ['errors' => $model->getErrors()];
     }
 
-    /**
-     * PUT/PATCH /results/{id}
-     */
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
         $body = Yii::$app->request->bodyParams;
 
-        $model->owner_id = $body['owner_id'] ?? $model->owner_id;
         $model->parent_id = array_key_exists('parent_id', $body) ? $body['parent_id'] : $model->parent_id;
         $model->title = $body['title'] ?? $model->title;
         $model->description = $body['description'] ?? $model->description;
+        $model->expected_result = $body['expected_result'] ?? $model->expected_result;
         $model->deadline = $body['deadline'] ?? $model->deadline;
 
         if ($model->save()) {
@@ -147,10 +130,6 @@ class ResultController extends Controller
         return ['errors' => $model->getErrors()];
     }
 
-    /**
-     * PATCH /results/{id}/complete
-     * body: { is_completed: true|false }
-     */
     public function actionComplete($id)
     {
         $model = $this->findModel($id);
@@ -159,8 +138,7 @@ class ResultController extends Controller
         if (!array_key_exists('is_completed', $body)) {
             throw new BadRequestHttpException('Missing is_completed');
         }
-
-        $model->completed_at = $body['is_completed'] ? date('Y-m-d H:i:s') : null;
+        $model->completed_at = $body['is_completed'] ? time() : null;
 
         if ($model->save(false, ['completed_at', 'updated_at'])) {
             return $model->toArray();
@@ -170,9 +148,6 @@ class ResultController extends Controller
         return ['errors' => $model->getErrors()];
     }
 
-    /**
-     * DELETE /results/{id}
-     */
     public function actionDelete($id)
     {
         $model = $this->findModel($id);
@@ -189,7 +164,6 @@ class ResultController extends Controller
         if (!$model) {
             throw new NotFoundHttpException('Result not found');
         }
-        // опційно: перевірка organization_id == користувача
         return $model;
     }
 }
