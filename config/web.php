@@ -1,117 +1,79 @@
 <?php
+use yii\web\Response;
+use yii\filters\Cors;
 
-$params = require __DIR__ . '/params.php';
 $db = require __DIR__ . '/db.php';
 
-$config = [
-    'id' => 'basic',
+return [
+    'id' => 'fineko-api',
     'basePath' => dirname(__DIR__),
     'bootstrap' => ['log'],
-    'aliases' => [
-        '@bower' => '@vendor/bower-asset',
-        '@npm' => '@vendor/npm-asset',
-    ],
-
-    // ✅ CORS на верхньому рівні (залишив як у тебе)
-    'as cors' => [
-        'class' => \yii\filters\Cors::class,
-        'cors' => [
-            'Origin' => ['https://tasks.fineko.space'],
-            'Access-Control-Request-Method' => ['POST', 'GET', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-            'Access-Control-Allow-Credentials' => true,
-            'Access-Control-Allow-Headers' => ['Content-Type', 'Authorization', 'X-Requested-With'],
-            'Access-Control-Max-Age' => 3600,
-        ],
-    ],
-
     'components' => [
         'request' => [
-            'cookieValidationKey' => 'RnmH64wG8bRABrW3rP9QUI0kEDBdcCJz',
-            'enableCsrfValidation' => false, // ✅ API-режим
+            'enableCookieValidation' => false,
+            'enableCsrfValidation' => false,
             'parsers' => [
                 'application/json' => 'yii\web\JsonParser',
             ],
         ],
-        'cache' => [
-            'class' => 'yii\caching\FileCache',
+        'response' => [
+            'format' => Response::FORMAT_JSON,
+            'charset' => 'UTF-8',
         ],
-        // ✅ Користувач без сесій (Bearer токени)
         'user' => [
-            'identityClass' => 'app\models\User',
+            'identityClass' => app\models\User::class,
             'enableAutoLogin' => false,
-            'enableSession' => false,    // ✅ головне для API
+            'enableSession' => false,
             'loginUrl' => null,
         ],
-        'errorHandler' => [
-            'errorAction' => 'error/index',
-        ],
-        'mailer' => [
-            'class' => \yii\symfonymailer\Mailer::class,
-            'viewPath' => '@app/mail',
-            'useFileTransport' => true,
-        ],
+        'db' => $db,
         'log' => [
             'traceLevel' => YII_DEBUG ? 3 : 0,
             'targets' => [
                 [
-                    'class' => 'yii\log\FileTarget',
+                    'class' => yii\log\FileTarget::class,
                     'levels' => ['error', 'warning'],
                 ],
             ],
         ],
-        'db' => $db,
-
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
-                // Auth
                 'POST auth/login' => 'auth/login',
-                'POST auth/refresh' => 'auth/refresh', // ✅ додано
+                'POST auth/refresh' => 'auth/refresh',
+                'POST auth/request-password-reset' => 'auth/request-password-reset',
+                'POST auth/reset-password' => 'auth/reset-password',
 
-                // Results CRUD (як було)
                 'GET results' => 'result/index',
                 'POST results' => 'result/create',
                 'GET results/<id:\d+>' => 'result/view',
-                'PUT results/<id:\d+>' => 'result/update',
                 'PATCH results/<id:\d+>' => 'result/update',
                 'DELETE results/<id:\d+>' => 'result/delete',
-                'PATCH results/<id:\d+>/complete' => 'result/complete',
-                'POST  results/<id:\d+>/complete' => 'result/complete',
+                'POST results/<id:\d+>/complete' => 'result/complete',
             ],
-        ],
-
-        // Відповіді JSON (залишив і розширив)
-        'response' => [
-            'format' => yii\web\Response::FORMAT_JSON,
-            'charset' => 'UTF-8',
-            'formatters' => [
-                yii\web\Response::FORMAT_JSON => [
-                    'class' => yii\web\JsonResponseFormatter::class,
-                    'encodeOptions' => JSON_UNESCAPED_UNICODE,
-                ],
-            ],
-            'on beforeSend' => function ($event) {
-                $response = $event->sender;
-                $origin = \Yii::$app->request->headers->get('Origin');
-                if ($origin) {
-                    $response->headers->set('Access-Control-Allow-Origin', $origin);
-                } else {
-                    $response->headers->set('Access-Control-Allow-Origin', '*');
-                }
-                $response->headers->set('Access-Control-Allow-Credentials', 'true');
-                $response->headers->set('Content-Type', 'application/json; charset=UTF-8');
-            },
         ],
     ],
-    'params' => $params,
+
+    'as corsFilter' => [
+        'class' => Cors::class,
+        'cors' => [
+            'Origin' => [
+                'https://tasks.fineko.space',
+                'http://ftasks.local',
+                'http://localhost:3000',
+            ],
+            'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+            'Access-Control-Request-Headers' => ['Authorization', 'Content-Type', 'X-Requested-With'],
+            'Access-Control-Allow-Credentials' => false,
+            'Access-Control-Max-Age' => 86400,
+            'Access-Control-Expose-Headers' => ['Content-Type'],
+        ],
+    ],
+
+    'on beforeRequest' => function () {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+    },
+
+    'params' => [],
 ];
-
-if (YII_ENV_DEV) {
-    $config['bootstrap'][] = 'debug';
-    $config['modules']['debug'] = ['class' => 'yii\debug\Module'];
-    $config['bootstrap'][] = 'gii';
-    $config['modules']['gii'] = ['class' => 'yii\gii\Module'];
-}
-
-return $config;

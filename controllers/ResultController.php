@@ -10,6 +10,40 @@ use app\models\Result;
 
 class ResultController extends ApiController
 {
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+
+        $behaviors['corsFilter'] = [
+            'class' => \yii\filters\Cors::class,
+        ];
+
+        $behaviors['authenticator'] = [
+            'class' => \yii\filters\auth\HttpBearerAuth::class,
+            'except' => ['options'], // preflight без авторизації
+        ];
+
+        return $behaviors;
+    }
+
+    public function verbs()
+    {
+        return [
+            'options' => ['OPTIONS'],
+            'index' => ['GET'],
+            'view' => ['GET'],
+            'create' => ['POST'],
+            'update' => ['PATCH', 'PUT'],
+            'delete' => ['DELETE'],
+            'complete' => ['POST'],
+        ];
+    }
+
+    public function actionOptions()
+    {
+        return 'ok';
+    }
+
     /**
      * GET /results
      * Повертає тільки результати поточного користувача

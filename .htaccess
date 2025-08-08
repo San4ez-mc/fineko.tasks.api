@@ -1,11 +1,15 @@
+Options FollowSymLinks
+IndexIgnore */*
 RewriteEngine On
 
-# Ввімкнути мод_rewrite
-RewriteBase /
+# Віддавати напряму існуючі файли
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
 
-# Дозволити доступ до існуючих файлів та папок
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+# Пропускаємо preflight (OPTIONS) у front controller
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^ index.php [L]
 
-# Все інше — на index.php
-RewriteRule ^.*$ index.php [L]
+# Інші запити — у front controller Yii2
+RewriteRule ^ index.php [L]
