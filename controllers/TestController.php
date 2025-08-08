@@ -1,15 +1,22 @@
 <?php
+
 namespace app\controllers;
 
-use yii\web\Controller;
+use Yii;
 use yii\web\Response;
 
-class TestController extends Controller
+class TestController extends ApiController
 {
-
-    public function actionIndex()
+    /**
+     * GET /test/ping
+     * Тестовий ендпойнт, захищений Bearer токеном
+     */
+    public function actionPing()
     {
-        \Yii::$app->response->format = Response::FORMAT_JSON;
-        return ['message' => 'API is working successfully'];
+        return [
+            'success' => true,
+            'message' => 'Токен валідний',
+            'user_id' => Yii::$app->user->id,
+        ];
     }
 }
