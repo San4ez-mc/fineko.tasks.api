@@ -60,26 +60,21 @@ $config = [
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
-            'enableStrictParsing' => false,
             'rules' => [
-                [
-                    'class' => 'yii\rest\UrlRule',
-                    'controller' => ['auth'],
-                    'pluralize' => false,
-                    'extraPatterns' => [
-                        'POST login' => 'login',
-                        'POST logout' => 'logout',
-                        'POST telegram-login' => 'telegram-login',
-                        'POST request-password-reset' => 'request-password-reset',
-                        'POST reset-password' => 'reset-password',
-                    ],
-                ],
-                [
-                    'class' => 'yii\rest\UrlRule',
-                    'controller' => ['task', 'result', 'user', 'position'],
-                ],
-                'GET task/by-date' => 'task/by-date',
-                'GET test' => 'test/index',
+                // Auth
+                'POST auth/login' => 'auth/login',
+
+                // Results CRUD
+                'GET results' => 'result/index',
+                'POST results' => 'result/create',
+                'GET results/<id:\d+>' => 'result/view',
+                'PUT results/<id:\d+>' => 'result/update',
+                'PATCH results/<id:\d+>' => 'result/update',
+                'DELETE results/<id:\d+>' => 'result/delete',
+
+                // Toggle complete (дозволяємо і PATCH, і POST)
+                'PATCH results/<id:\d+>/complete' => 'result/complete',
+                'POST  results/<id:\d+>/complete' => 'result/complete',
             ],
         ],
         'response' => [
