@@ -2,7 +2,7 @@
 
 namespace app\controllers;
 
-use backend\models\Result;
+use app\models\Result;
 use Yii;
 use yii\filters\auth\HttpBearerAuth;
 use yii\filters\VerbFilter;
