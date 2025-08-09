@@ -2,156 +2,139 @@
 
 namespace app\controllers;
 
+use backend\models\Result;
 use Yii;
-use yii\data\ActiveDataProvider;
-use yii\web\BadRequestHttpException;
+use yii\filters\auth\HttpBearerAuth;
+use yii\filters\VerbFilter;
+use yii\rest\Controller;
+use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
-use app\models\Result;
 
-class ResultController extends ApiController
+class ResultController extends Controller
 {
     public function behaviors()
     {
-        $behaviors = parent::behaviors();
+        $b = parent::behaviors();
 
-        $behaviors['corsFilter'] = [
-            'class' => \yii\filters\Cors::class,
+        $b['authenticator'] = [
+            'class' => HttpBearerAuth::class,
         ];
 
-        $behaviors['authenticator'] = [
-            'class' => \yii\filters\auth\HttpBearerAuth::class,
-            'except' => ['options'], // preflight без авторизації
+        $b['verbs'] = [
+            'class' => VerbFilter::class,
+            'actions' => [
+                'index' => ['GET'],
+                'view' => ['GET'],
+                'create' => ['POST'],
+                'update' => ['PUT', 'PATCH'],
+                'delete' => ['DELETE'],
+            ],
         ];
 
-        return $behaviors;
+        return $b;
     }
 
-    public function verbs()
-    {
-        return [
-            'options' => ['OPTIONS'],
-            'index' => ['GET'],
-            'view' => ['GET'],
-            'create' => ['POST'],
-            'update' => ['PATCH', 'PUT'],
-            'delete' => ['DELETE'],
-            'complete' => ['POST'],
-        ];
-    }
-
-    public function actionOptions()
-    {
-        return 'ok';
-    }
-
-    /**
-     * GET /results
-     * Повертає тільки результати поточного користувача
-     */
     public function actionIndex()
     {
-        return new ActiveDataProvider([
-            'query' => Result::find()->where(['user_id' => Yii::$app->user->id]),
-            'pagination' => [
-                'pageSize' => (int) Yii::$app->request->get('per-page', 25),
+        $userId = (int) Yii::$app->user->id;
+        $assignedTo = Yii::$app->request->get('assigned_to');
+        $mine = Yii::$app->request->get('mine', '1');
+
+        $q = Result::find();
+
+        if ($assignedTo !== null && $assignedTo !== '') {
+            // за потреби — перевір ролі:
+            // if (!Yii::$app->user->can('admin')) throw new ForbiddenHttpException('Forbidden');
+            $q->andWhere(['assigned_to' => (int) $assignedTo]);
+        } elseif ($mine !== '0') {
+            $q->andWhere(['assigned_to' => $userId]);
+        }
+
+        $page = max(1, (int) Yii::$app->request->get('page', 1));
+        $perPage = min(100, max(1, (int) Yii::$app->request->get('per-page', 20)));
+
+        $total = (clone $q)->count();
+        $items = $q->orderBy(['id' => SORT_DESC])
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage)
+            ->all();
+
+        return [
+            'meta' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'total' => (int) $total,
             ],
-        ]);
+            'items' => array_map(function (Result $m) {
+                return $m->toArray([], ['assignee', 'setter']);
+            }, $items),
+        ];
     }
 
-    /**
-     * GET /results/{id}
-     */
     public function actionView($id)
     {
-        $model = Result::find()
-            ->where(['id' => (int) $id, 'user_id' => Yii::$app->user->id])
-            ->one();
-
-        if (!$model) {
-            throw new NotFoundHttpException('Result not found.');
-        }
-        return $model;
+        $m = $this->findModel((int) $id);
+        $this->ensureCanView($m);
+        return $m->toArray([], ['assignee', 'setter']);
     }
 
-    /**
-     * POST /results
-     * body: { title, description?, expected_result?, deadline?, parent_id? }
-     */
     public function actionCreate()
     {
-        $model = new Result();
-        $model->load(Yii::$app->request->bodyParams, '');
-        $model->user_id = Yii::$app->user->id;
+        $m = new Result();
+        $m->load(Yii::$app->request->post(), '');
 
-        if ($model->save()) {
-            return $model;
+        if ($m->save()) {
+            return $m->toArray([], ['assignee', 'setter']);
         }
-        return ['success' => false, 'errors' => $model->getErrors()];
+        Yii::$app->response->statusCode = 422;
+        return ['errors' => $m->getErrors()];
     }
 
-    /**
-     * PATCH /results/{id}
-     * body: часткове оновлення
-     */
     public function actionUpdate($id)
     {
-        $model = Result::find()
-            ->where(['id' => (int) $id, 'user_id' => Yii::$app->user->id])
-            ->one();
+        $m = $this->findModel((int) $id);
+        $this->ensureCanEdit($m);
 
-        if (!$model) {
-            throw new NotFoundHttpException('Result not found.');
+        $m->load(Yii::$app->request->post(), '');
+        if ($m->save()) {
+            return $m->toArray([], ['assignee', 'setter']);
         }
-
-        $model->load(Yii::$app->request->bodyParams, '');
-        if ($model->save()) {
-            return $model;
-        }
-        return ['success' => false, 'errors' => $model->getErrors()];
+        Yii::$app->response->statusCode = 422;
+        return ['errors' => $m->getErrors()];
     }
 
-    /**
-     * DELETE /results/{id}
-     */
     public function actionDelete($id)
     {
-        $model = Result::find()
-            ->where(['id' => (int) $id, 'user_id' => Yii::$app->user->id])
-            ->one();
-
-        if (!$model) {
-            throw new NotFoundHttpException('Result not found.');
-        }
-
-        if ($model->delete() !== false) {
-            return ['success' => true];
-        }
-        return ['success' => false];
+        $m = $this->findModel((int) $id);
+        $this->ensureCanEdit($m);
+        $m->delete();
+        return ['success' => true];
     }
 
-    /**
-     * POST /results/{id}/complete
-     * body: { is_completed: true|false }
-     */
-    public function actionComplete($id)
+    protected function findModel(int $id): Result
     {
-        $isCompleted = Yii::$app->request->bodyParams['is_completed'] ?? null;
-        if ($isCompleted === null) {
-            throw new BadRequestHttpException('Field "is_completed" is required.');
-        }
+        $m = Result::findOne($id);
+        if (!$m)
+            throw new NotFoundHttpException('Result not found');
+        return $m;
+    }
 
-        $model = Result::find()
-            ->where(['id' => (int) $id, 'user_id' => Yii::$app->user->id])
-            ->one();
-
-        if (!$model) {
-            throw new NotFoundHttpException('Result not found.');
+    protected function ensureCanView(Result $m): void
+    {
+        $uid = (int) Yii::$app->user->id;
+        if (in_array($uid, array_filter([$m->created_by, $m->assigned_to, $m->setter_id]), true)) {
+            return;
         }
+        // if (Yii::$app->user->can('admin')) return;
+        // Додай власну RBAC/організаційну перевірку за потреби.
+    }
 
-        $model->is_completed = (bool) $isCompleted;
-        if ($model->save(false)) {
-            return ['success' => true, 'is_completed' => $model->is_completed];
-        }
-        return ['success' => false];
+    protected function ensureCanEdit(Result $m): void
+    {
+        $uid = (int) Yii::$app->user->id;
+        if ((int) $m->setter_id === $uid)
+            return;
+        // if (Yii::$app->user->can('admin')) return;
+        throw new ForbiddenHttpException('Forbidden');
     }
 }

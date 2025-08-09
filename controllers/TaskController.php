@@ -2,132 +2,137 @@
 
 namespace app\controllers;
 
-use yii\web\Controller;
-use yii\web\Response;
+use backend\models\Task;
 use Yii;
-use app\models\Task;
+use yii\filters\auth\HttpBearerAuth;
+use yii\filters\VerbFilter;
+use yii\rest\Controller;
+use yii\web\ForbiddenHttpException;
+use yii\web\NotFoundHttpException;
 
 class TaskController extends Controller
 {
-
-    /**
-     * ✅ 1. Отримати список задач по фільтрах
-     * Виклик: GET /index.php?r=task/filter&date=2025-07-24&type=важлива&assigned_to=Іван&creator=Марія&sort=asc
-     */
-    public function actionFilter()
+    public function behaviors()
     {
-        Yii::$app->response->format = Response::FORMAT_JSON;
+        $b = parent::behaviors();
 
-        $request = Yii::$app->request;
-        $date = $request->get('date');
-        $type = $request->get('type');
-        $assignedTo = $request->get('assigned_to');
-        $creator = $request->get('creator');
-        $sort = $request->get('sort', 'asc'); // asc або desc
+        $b['authenticator'] = [
+            'class' => HttpBearerAuth::class,
+        ];
 
-        if (!$date) {
-            return [
-                'error' => true,
-                'message' => 'Дата є обов’язковим параметром'
-            ];
+        $b['verbs'] = [
+            'class' => VerbFilter::class,
+            'actions' => [
+                'index' => ['GET'],
+                'view' => ['GET'],
+                'create' => ['POST'],
+                'update' => ['PUT', 'PATCH'],
+                'delete' => ['DELETE'],
+            ],
+        ];
+
+        return $b;
+    }
+
+    public function actionIndex()
+    {
+        $userId = (int) Yii::$app->user->id;
+        $assignedTo = Yii::$app->request->get('assigned_to');
+        $mine = Yii::$app->request->get('mine', '1');
+
+        $q = Task::find();
+
+        if ($assignedTo !== null && $assignedTo !== '') {
+            // if (!Yii::$app->user->can('admin')) throw new ForbiddenHttpException('Forbidden');
+            $q->andWhere(['assigned_to' => (int) $assignedTo]);
+        } elseif ($mine !== '0') {
+            $q->andWhere(['assigned_to' => $userId]);
         }
 
-        $query = Task::find()->where(['planned_date' => $date]);
+        $page = max(1, (int) Yii::$app->request->get('page', 1));
+        $perPage = min(100, max(1, (int) Yii::$app->request->get('per-page', 20)));
 
-        if (!empty($type)) {
-            $query->andWhere(['type' => $type]);
-        }
-
-        if (!empty($assignedTo)) {
-            $query->andWhere(['assigned_to' => $assignedTo]);
-        }
-
-        if (!empty($creator)) {
-            $query->andWhere(['creator' => $creator]);
-        }
-
-        $tasks = $query->orderBy(['planned_date' => ($sort === 'desc' ? SORT_DESC : SORT_ASC)])
-            ->asArray()
+        $total = (clone $q)->count();
+        $items = $q->orderBy(['id' => SORT_DESC])
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage)
             ->all();
 
         return [
-            'date' => $date,
-            'count' => count($tasks),
-            'tasks' => $tasks
+            'meta' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'total' => (int) $total,
+            ],
+            'items' => array_map(function (Task $m) {
+                return $m->toArray([], ['assignee', 'setter']);
+            }, $items),
         ];
     }
 
-    /**
-     * ✅ 2. Видалення задачі
-     * DELETE /index.php?r=task/delete&id=123
-     */
+    public function actionView($id)
+    {
+        $m = $this->findModel((int) $id);
+        $this->ensureCanView($m);
+        return $m->toArray([], ['assignee', 'setter']);
+    }
+
+    public function actionCreate()
+    {
+        $m = new Task();
+        $m->load(Yii::$app->request->post(), '');
+
+        if ($m->save()) {
+            return $m->toArray([], ['assignee', 'setter']);
+        }
+        Yii::$app->response->statusCode = 422;
+        return ['errors' => $m->getErrors()];
+    }
+
+    public function actionUpdate($id)
+    {
+        $m = $this->findModel((int) $id);
+        $this->ensureCanEdit($m);
+
+        $m->load(Yii::$app->request->post(), '');
+        if ($m->save()) {
+            return $m->toArray([], ['assignee', 'setter']);
+        }
+        Yii::$app->response->statusCode = 422;
+        return ['errors' => $m->getErrors()];
+    }
+
     public function actionDelete($id)
     {
-        Yii::$app->response->format = Response::FORMAT_JSON;
-
-        $model = Task::findOne($id);
-        if (!$model) {
-            return [
-                'error' => true,
-                'message' => 'Задачу не знайдено'
-            ];
-        }
-
-        if ($model->delete()) {
-            return [
-                'success' => true,
-                'message' => 'Задачу видалено'
-            ];
-        } else {
-            return [
-                'error' => true,
-                'message' => 'Не вдалося видалити задачу'
-            ];
-        }
+        $m = $this->findModel((int) $id);
+        $this->ensureCanEdit($m);
+        $m->delete();
+        return ['success' => true];
     }
 
-    /**
-     * ✅ 3. Редагування одного поля в задачі
-     * PATCH /index.php?r=task/update-field&id=123
-     * JSON: { "field": "title", "value": "Нова назва" }
-     */
-    public function actionUpdateField($id)
+    protected function findModel(int $id): Task
     {
-        Yii::$app->response->format = Response::FORMAT_JSON;
+        $m = Task::findOne($id);
+        if (!$m)
+            throw new NotFoundHttpException('Task not found');
+        return $m;
+    }
 
-        $model = Task::findOne($id);
-        if (!$model) {
-            return [
-                'error' => true,
-                'message' => 'Задачу не знайдено'
-            ];
+    protected function ensureCanView(Task $m): void
+    {
+        $uid = (int) Yii::$app->user->id;
+        if (in_array($uid, array_filter([$m->created_by, $m->assigned_to, $m->setter_id]), true)) {
+            return;
         }
+        // if (Yii::$app->user->can('admin')) return;
+    }
 
-        $body = Yii::$app->request->bodyParams;
-        $field = $body['field'] ?? null;
-        $value = $body['value'] ?? null;
-
-        if (!$field || !array_key_exists($field, $model->attributes)) {
-            return [
-                'error' => true,
-                'message' => 'Невірне поле для оновлення'
-            ];
-        }
-
-        $model->$field = $value;
-
-        if ($model->save(false)) { // false – щоб не валідувати все
-            return [
-                'success' => true,
-                'message' => "Поле {$field} оновлено",
-                'task' => $model->toArray()
-            ];
-        }
-
-        return [
-            'error' => true,
-            'message' => 'Не вдалося оновити поле',
-            'errors' => $model->getErrors()
-        ];
+    protected function ensureCanEdit(Task $m): void
+    {
+        $uid = (int) Yii::$app->user->id;
+        if ((int) $m->setter_id === $uid)
+            return;
+        // if (Yii::$app->user->can('admin')) return;
+        throw new ForbiddenHttpException('Forbidden');
     }
 }
