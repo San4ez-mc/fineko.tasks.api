@@ -43,6 +43,7 @@ class ApiController extends Controller
                 'Origin' => [
                     'https://tasks.fineko.space',
                     'http://ftasks.local',
+                    'https://ftasks.local',
                     // якщо треба dev CRA:
                     // 'http://localhost:3000',
                 ],
@@ -73,7 +74,7 @@ class ApiController extends Controller
             Yii::$app->response->statusCode = 200;
             // Додатково виставимо ACAO під конкретний Origin (на випадок, якщо сервер не прокинув)
             $origin = Yii::$app->request->headers->get('Origin');
-            $allowed = ['https://tasks.fineko.space', 'http://ftasks.local'];
+            $allowed = ['https://tasks.fineko.space', 'http://ftasks.local',  'https://ftasks.local'];
             if ($origin && in_array($origin, $allowed, true)) {
                 $h = Yii::$app->response->headers;
                 $h->set('Access-Control-Allow-Origin', $origin);

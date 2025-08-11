@@ -75,6 +75,7 @@ return [
         'cors' => [
             'Origin' => [
                 'https://tasks.fineko.space',
+                'https://ftasks.local',
                 'http://ftasks.local',
             ],
             'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
