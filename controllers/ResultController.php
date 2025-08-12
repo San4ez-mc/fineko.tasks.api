@@ -110,6 +110,19 @@ class ResultController extends ApiController
             $payload['urgent'] = (bool) $data['urgent'];
         }
 
+        if (array_key_exists('completed_at', $data)) {
+            if ($data['completed_at'] === null || $data['completed_at'] === '') {
+                $payload['completed_at'] = null;
+            } else {
+                $ts = strtotime($data['completed_at']);
+                if ($ts === false) {
+                    Yii::$app->response->statusCode = 422;
+                    return ['errors' => ['completed_at' => ['Invalid date format']]];
+                }
+                $payload['completed_at'] = $ts;
+            }
+        }
+
         $m->load($payload, '');
         if ($m->save()) {
             return $m->toArray([], ['assignee', 'setter']);
