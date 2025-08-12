@@ -81,12 +81,23 @@ class ResultController extends Controller
     public function actionCreate()
     {
         $m = new Result();
-        $m->load(Yii::$app->request->post(), '');
+        $data = Yii::$app->request->post();
+
+        $payload = [
+            'title' => $data['title'] ?? null,
+            'expected_result' => $data['final_result'] ?? null,
+            'description' => $data['description'] ?? null,
+            'assigned_to' => $data['responsible_id'] ?? null,
+            'urgent' => isset($data['urgent']) ? (bool) $data['urgent'] : false,
+        ];
+
+        $m->load($payload, '');
 
         if ($m->save()) {
+            Yii::$app->response->statusCode = 201;
             return $m->toArray([], ['assignee', 'setter']);
         }
-        Yii::$app->response->statusCode = 422;
+        Yii::$app->response->statusCode = 400;
         return ['errors' => $m->getErrors()];
     }
 
@@ -95,7 +106,18 @@ class ResultController extends Controller
         $m = $this->findModel((int) $id);
         $this->ensureCanEdit($m);
 
-        $m->load(Yii::$app->request->post(), '');
+        $data = Yii::$app->request->post();
+        $payload = [
+            'title' => $data['title'] ?? $m->title,
+            'expected_result' => $data['final_result'] ?? $m->expected_result,
+            'description' => $data['description'] ?? $m->description,
+            'assigned_to' => $data['responsible_id'] ?? $m->assigned_to,
+        ];
+        if (array_key_exists('urgent', $data)) {
+            $payload['urgent'] = (bool) $data['urgent'];
+        }
+
+        $m->load($payload, '');
         if ($m->save()) {
             return $m->toArray([], ['assignee', 'setter']);
         }
