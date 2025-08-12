@@ -66,7 +66,7 @@ class Result extends ActiveRecord
             return $this->assigned_to;
         };
         $fields['urgent'] = function () {
-            return (bool) $this->urgent;
+            return (int) (bool) $this->urgent;
         };
 
         unset($fields['expected_result'], $fields['assigned_to']);
