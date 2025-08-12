@@ -80,6 +80,9 @@ class Result extends ActiveRecord
         $fields['tasks_done'] = function () {
             return (int) $this->getTasks()->andWhere(['status' => 'done'])->count();
         };
+        $fields['completed_at'] = function () {
+            return $this->completed_at ? gmdate('c', $this->completed_at) : null;
+        };
         $fields['is_completed'] = function () {
             return $this->completed_at !== null;
         };

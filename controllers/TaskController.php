@@ -4,21 +4,15 @@ namespace app\controllers;
 
 use backend\models\Task;
 use Yii;
-use yii\filters\auth\HttpBearerAuth;
 use yii\filters\VerbFilter;
-use yii\rest\Controller;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 
-class TaskController extends Controller
+class TaskController extends ApiController
 {
     public function behaviors()
     {
         $b = parent::behaviors();
-
-        $b['authenticator'] = [
-            'class' => HttpBearerAuth::class,
-        ];
 
         $b['verbs'] = [
             'class' => VerbFilter::class,
