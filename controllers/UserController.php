@@ -3,20 +3,13 @@ namespace app\controllers;
 
 use app\models\User;
 use Yii;
-use yii\filters\auth\HttpBearerAuth;
 use yii\filters\VerbFilter;
-use yii\rest\Controller;
 
-class UserController extends Controller
+class UserController extends ApiController
 {
     public function behaviors()
     {
         $b = parent::behaviors();
-
-        $b['authenticator'] = [
-            'class' => HttpBearerAuth::class,
-        ];
-
         $b['verbs'] = [
             'class' => VerbFilter::class,
             'actions' => [
@@ -37,7 +30,7 @@ class UserController extends Controller
         }
 
         $fetch = function () use ($query) {
-            $rows = $query->orderBy(['id' => SORT_ASC])->asArray()->all();
+            $rows = $query->orderBy(['last_name' => SORT_ASC, 'first_name' => SORT_ASC, 'id' => SORT_ASC])->asArray()->all();
             return array_map(function ($u) {
                 return [
                     'id' => (int) $u['id'],

@@ -43,6 +43,7 @@ class Result extends ActiveRecord
             [['title'], 'string', 'max' => 255],
             [['urgent'], 'boolean'],
             [['urgent'], 'default', 'value' => false],
+            [['assigned_to'], 'exist', 'targetClass' => User::class, 'targetAttribute' => ['assigned_to' => 'id'], 'message' => 'Відповідальний користувач не знайдений.'],
             [['parent_id'], 'validateParent'],
         ];
     }

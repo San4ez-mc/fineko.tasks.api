@@ -4,22 +4,15 @@ namespace app\controllers;
 
 use app\models\Result;
 use Yii;
-use yii\filters\auth\HttpBearerAuth;
 use yii\filters\VerbFilter;
-use yii\rest\Controller;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 
-class ResultController extends Controller
+class ResultController extends ApiController
 {
     public function behaviors()
     {
         $b = parent::behaviors();
-
-        $b['authenticator'] = [
-            'class' => HttpBearerAuth::class,
-        ];
-
         $b['verbs'] = [
             'class' => VerbFilter::class,
             'actions' => [
@@ -97,7 +90,7 @@ class ResultController extends Controller
             Yii::$app->response->statusCode = 201;
             return $m->toArray([], ['assignee', 'setter']);
         }
-        Yii::$app->response->statusCode = 400;
+        Yii::$app->response->statusCode = 422;
         return ['errors' => $m->getErrors()];
     }
 
