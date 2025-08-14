@@ -79,7 +79,9 @@ class ResultController extends ApiController
 
         $m->load($data, '');
 
-        $m->urgent = isset($data['urgent']) ? filter_var($data['urgent'], FILTER_VALIDATE_BOOLEAN) : false;
+        if (array_key_exists('urgent', $data)) {
+            $m->urgent = filter_var($data['urgent'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+        }
         if (array_key_exists('is_done', $data) || array_key_exists('is_completed', $data)) {
             $flag = array_key_exists('is_done', $data) ? $data['is_done'] : $data['is_completed'];
             $m->completed_at = filter_var($flag, FILTER_VALIDATE_BOOLEAN) ? time() : null;
@@ -108,7 +110,9 @@ class ResultController extends ApiController
 
         $m->load($data, '');
 
-        $m->urgent = isset($data['urgent']) ? filter_var($data['urgent'], FILTER_VALIDATE_BOOLEAN) : false;
+        if (array_key_exists('urgent', $data)) {
+            $m->urgent = filter_var($data['urgent'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+        }
         if (array_key_exists('is_done', $data) || array_key_exists('is_completed', $data)) {
             $flag = array_key_exists('is_done', $data) ? $data['is_done'] : $data['is_completed'];
             $m->completed_at = filter_var($flag, FILTER_VALIDATE_BOOLEAN) ? ($m->completed_at ?? time()) : null;
