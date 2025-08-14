@@ -42,15 +42,13 @@ class ApiController extends Controller
                 // ВАЖЛИВО: локальний домен без https
                 'Origin' => [
                     'https://tasks.fineko.space',
-                    'http://ftasks.local',
                     'https://ftasks.local',
-                    // якщо треба dev CRA:
-                    // 'http://localhost:3000',
+                    'http://ftasks.local',
+                    'http://localhost:3000',
                 ],
                 'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-                'Access-Control-Request-Headers' => ['Authorization', 'Content-Type', 'X-Requested-With'],
-                // Ми не використовуємо cookies → креденшали не потрібні
-                'Access-Control-Allow-Credentials' => false,
+                'Access-Control-Request-Headers' => ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Requested-With'],
+                'Access-Control-Allow-Credentials' => true,
                 'Access-Control-Max-Age' => 86400,
                 'Access-Control-Expose-Headers' => ['Content-Type'],
             ],
@@ -74,14 +72,14 @@ class ApiController extends Controller
             Yii::$app->response->statusCode = 200;
             // Додатково виставимо ACAO під конкретний Origin (на випадок, якщо сервер не прокинув)
             $origin = Yii::$app->request->headers->get('Origin');
-            $allowed = ['https://tasks.fineko.space', 'http://ftasks.local',  'https://ftasks.local'];
+            $allowed = ['https://tasks.fineko.space', 'https://ftasks.local', 'http://ftasks.local', 'http://localhost:3000'];
             if ($origin && in_array($origin, $allowed, true)) {
                 $h = Yii::$app->response->headers;
                 $h->set('Access-Control-Allow-Origin', $origin);
                 $h->set('Vary', 'Origin');
                 $h->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-                $h->set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Requested-With');
-                // Креденшали не виставляємо, бо вони вимкнені
+                $h->set('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, Origin, X-Requested-With');
+                $h->set('Access-Control-Allow-Credentials', 'true');
             }
             return false;
         }

@@ -12,6 +12,9 @@ use yii\db\ActiveRecord;
  * @property string $title
  * @property string|null $description
  * @property string|null $expected_result
+ * @property bool $urgent
+ * @property int|null $assigned_to
+ * @property int|null $setter_id
  * @property string|null $deadline        // DATE (Y-m-d)
  * @property int|null $created_by
  * @property int|null $created_at
@@ -33,11 +36,14 @@ class Result extends ActiveRecord
     public function rules()
     {
         return [
-            [['organization_id', 'title'], 'required'],
-            [['organization_id', 'created_by', 'created_at', 'updated_at', 'parent_id', 'completed_at'], 'integer'],
+            [['organization_id', 'title', 'expected_result', 'assigned_to'], 'required'],
+            [['organization_id', 'created_by', 'created_at', 'updated_at', 'parent_id', 'completed_at', 'assigned_to', 'setter_id'], 'integer'],
             [['description', 'expected_result'], 'string'],
             [['deadline'], 'date', 'format' => 'php:Y-m-d'],
             [['title'], 'string', 'max' => 255],
+            [['urgent'], 'boolean'],
+            [['urgent'], 'default', 'value' => false],
+            [['assigned_to'], 'exist', 'targetClass' => User::class, 'targetAttribute' => ['assigned_to' => 'id'], 'message' => 'Відповідальний користувач не знайдений.'],
             [['parent_id'], 'validateParent'],
         ];
     }
@@ -53,6 +59,18 @@ class Result extends ActiveRecord
     {
         $fields = parent::fields();
 
+        $fields['final_result'] = function () {
+            return $this->expected_result;
+        };
+        $fields['responsible_id'] = function () {
+            return $this->assigned_to;
+        };
+        $fields['urgent'] = function () {
+            return (bool) $this->urgent;
+        };
+
+        unset($fields['expected_result'], $fields['assigned_to']);
+
         $fields['children_count'] = function () {
             return (int) $this->getChildren()->count();
         };
@@ -61,6 +79,9 @@ class Result extends ActiveRecord
         };
         $fields['tasks_done'] = function () {
             return (int) $this->getTasks()->andWhere(['status' => 'done'])->count();
+        };
+        $fields['completed_at'] = function () {
+            return $this->completed_at ? gmdate('c', $this->completed_at) : null;
         };
         $fields['is_completed'] = function () {
             return $this->completed_at !== null;
@@ -84,6 +105,16 @@ class Result extends ActiveRecord
         return $this->hasMany(Task::class, ['result_id' => 'id']);
     }
 
+    public function getAssignee(): ActiveQuery
+    {
+        return $this->hasOne(User::class, ['id' => 'assigned_to']);
+    }
+
+    public function getSetter(): ActiveQuery
+    {
+        return $this->hasOne(User::class, ['id' => 'setter_id']);
+    }
+
     public function beforeValidate()
     {
         if ($this->isNewRecord) {
@@ -95,6 +126,9 @@ class Result extends ActiveRecord
             }
             if (!$this->created_by && !Yii::$app->user->isGuest && isset(Yii::$app->user->id)) {
                 $this->created_by = (int) Yii::$app->user->id;
+            }
+            if (!$this->setter_id && !Yii::$app->user->isGuest && isset(Yii::$app->user->id)) {
+                $this->setter_id = (int) Yii::$app->user->id;
             }
         }
         return parent::beforeValidate();

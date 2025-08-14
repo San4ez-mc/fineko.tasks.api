@@ -4,22 +4,15 @@ namespace app\controllers;
 
 use app\models\Result;
 use Yii;
-use yii\filters\auth\HttpBearerAuth;
 use yii\filters\VerbFilter;
-use yii\rest\Controller;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 
-class ResultController extends Controller
+class ResultController extends ApiController
 {
     public function behaviors()
     {
         $b = parent::behaviors();
-
-        $b['authenticator'] = [
-            'class' => HttpBearerAuth::class,
-        ];
-
         $b['verbs'] = [
             'class' => VerbFilter::class,
             'actions' => [
@@ -81,9 +74,20 @@ class ResultController extends Controller
     public function actionCreate()
     {
         $m = new Result();
-        $m->load(Yii::$app->request->post(), '');
+        $data = Yii::$app->request->post();
+
+        $payload = [
+            'title' => $data['title'] ?? null,
+            'expected_result' => $data['final_result'] ?? null,
+            'description' => $data['description'] ?? null,
+            'assigned_to' => $data['responsible_id'] ?? null,
+            'urgent' => isset($data['urgent']) ? (bool) $data['urgent'] : false,
+        ];
+
+        $m->load($payload, '');
 
         if ($m->save()) {
+            Yii::$app->response->statusCode = 201;
             return $m->toArray([], ['assignee', 'setter']);
         }
         Yii::$app->response->statusCode = 422;
@@ -95,7 +99,31 @@ class ResultController extends Controller
         $m = $this->findModel((int) $id);
         $this->ensureCanEdit($m);
 
-        $m->load(Yii::$app->request->post(), '');
+        $data = Yii::$app->request->post();
+        $payload = [
+            'title' => $data['title'] ?? $m->title,
+            'expected_result' => $data['final_result'] ?? $m->expected_result,
+            'description' => $data['description'] ?? $m->description,
+            'assigned_to' => $data['responsible_id'] ?? $m->assigned_to,
+        ];
+        if (array_key_exists('urgent', $data)) {
+            $payload['urgent'] = (bool) $data['urgent'];
+        }
+
+        if (array_key_exists('completed_at', $data)) {
+            if ($data['completed_at'] === null || $data['completed_at'] === '') {
+                $payload['completed_at'] = null;
+            } else {
+                $ts = strtotime($data['completed_at']);
+                if ($ts === false) {
+                    Yii::$app->response->statusCode = 422;
+                    return ['errors' => ['completed_at' => ['Invalid date format']]];
+                }
+                $payload['completed_at'] = $ts;
+            }
+        }
+
+        $m->load($payload, '');
         if ($m->save()) {
             return $m->toArray([], ['assignee', 'setter']);
         }

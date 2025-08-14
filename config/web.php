@@ -56,6 +56,8 @@ return [
                 'POST auth/request-password-reset' => 'auth/request-password-reset',
                 'POST auth/reset-password' => 'auth/reset-password',
 
+                'GET users' => 'user/index',
+
                 'GET results' => 'result/index',
                 'POST results' => 'result/create',
                 'GET results/<id:\d+>' => 'result/view',
