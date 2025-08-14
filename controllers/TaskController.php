@@ -2,7 +2,7 @@
 
 namespace app\controllers;
 
-use backend\models\Task;
+use app\models\Task;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\BadRequestHttpException;
@@ -11,6 +11,14 @@ use yii\web\NotFoundHttpException;
 
 class TaskController extends ApiController
 {
+    /**
+     * Дії, які доступні без Bearer-автентифікації.
+     */
+    protected function authExcept(): array
+    {
+        return array_merge(parent::authExcept(), ['filter', 'templates']);
+    }
+
     public function behaviors()
     {
         $b = parent::behaviors();
