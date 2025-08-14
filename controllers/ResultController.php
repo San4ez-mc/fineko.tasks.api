@@ -76,15 +76,15 @@ class ResultController extends ApiController
         $m = new Result();
         $data = Yii::$app->request->post();
 
-        $payload = [
-            'title' => $data['title'] ?? null,
-            'expected_result' => $data['final_result'] ?? null,
-            'description' => $data['description'] ?? null,
-            'assigned_to' => $data['responsible_id'] ?? null,
-            'urgent' => isset($data['urgent']) ? (bool) $data['urgent'] : false,
-        ];
+        $m->load($data, '');
 
-        $m->load($payload, '');
+        $m->urgent = !empty($m->urgent) ? 1 : 0;
+        if (isset($data['responsible_id'])) {
+            $m->assigned_to = (int) $data['responsible_id'];
+        }
+        if (isset($data['final_result'])) {
+            $m->expected_result = $data['final_result'];
+        }
 
         if ($m->save()) {
             Yii::$app->response->statusCode = 201;
@@ -100,30 +100,30 @@ class ResultController extends ApiController
         $this->ensureCanEdit($m);
 
         $data = Yii::$app->request->post();
-        $payload = [
-            'title' => $data['title'] ?? $m->title,
-            'expected_result' => $data['final_result'] ?? $m->expected_result,
-            'description' => $data['description'] ?? $m->description,
-            'assigned_to' => $data['responsible_id'] ?? $m->assigned_to,
-        ];
-        if (array_key_exists('urgent', $data)) {
-            $payload['urgent'] = (bool) $data['urgent'];
+
+        $m->load($data, '');
+
+        $m->urgent = !empty($m->urgent) ? 1 : 0;
+        if (isset($data['responsible_id'])) {
+            $m->assigned_to = (int) $data['responsible_id'];
+        }
+        if (isset($data['final_result'])) {
+            $m->expected_result = $data['final_result'];
         }
 
         if (array_key_exists('completed_at', $data)) {
             if ($data['completed_at'] === null || $data['completed_at'] === '') {
-                $payload['completed_at'] = null;
+                $m->completed_at = null;
             } else {
                 $ts = strtotime($data['completed_at']);
                 if ($ts === false) {
                     Yii::$app->response->statusCode = 422;
                     return ['errors' => ['completed_at' => ['Invalid date format']]];
                 }
-                $payload['completed_at'] = $ts;
+                $m->completed_at = $ts;
             }
         }
 
-        $m->load($payload, '');
         if ($m->save()) {
             return $m->toArray([], ['assignee', 'setter']);
         }
