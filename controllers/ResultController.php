@@ -21,6 +21,7 @@ class ResultController extends ApiController
                 'create' => ['POST'],
                 'update' => ['PUT', 'PATCH'],
                 'delete' => ['DELETE'],
+                'toggle-done' => ['PATCH'],
             ],
         ];
 
@@ -129,6 +130,24 @@ class ResultController extends ApiController
         }
         Yii::$app->response->statusCode = 422;
         return ['errors' => $m->getErrors()];
+    }
+
+    public function actionToggleDone($id)
+    {
+        $m = $this->findModel((int) $id);
+        $this->ensureCanEdit($m);
+
+        $data = Yii::$app->request->post();
+
+        if (array_key_exists('is_done', $data)) {
+            $m->completed_at = filter_var($data['is_done'], FILTER_VALIDATE_BOOLEAN) ? time() : null;
+        } else {
+            $m->completed_at = $m->completed_at === null ? time() : null;
+        }
+
+        $m->save(false, ['completed_at', 'updated_at']);
+
+        return $m->toArray([], ['assignee', 'setter']);
     }
 
     public function actionDelete($id)

@@ -61,6 +61,7 @@ return [
                 'GET results' => 'result/index',
                 'POST results' => 'result/create',
                 'GET results/<id:\d+>' => 'result/view',
+                'PATCH results/<id:\d+>/toggle-done' => 'result/toggle-done',
                 'PATCH results/<id:\d+>' => 'result/update',
                 'DELETE results/<id:\d+>' => 'result/delete',
                 'POST results/<id:\d+>/complete' => 'result/complete',
