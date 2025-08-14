@@ -77,6 +77,13 @@ return [
 
                 'GET users' => 'user/index',
 
+                'GET positions' => 'position/index',
+
+                'POST positions' => 'position/create',
+                'GET positions/<id:\\d+>' => 'position/view',
+                'PUT,PATCH positions/<id:\\d+>' => 'position/update',
+                'DELETE positions/<id:\\d+>' => 'position/delete',
+
                 'GET results' => 'result/index',
                 'POST results' => 'result/create',
                 'GET results/<id:\d+>' => 'result/view',
