@@ -5,6 +5,7 @@ namespace app\controllers;
 use backend\models\Task;
 use Yii;
 use yii\filters\VerbFilter;
+use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 
@@ -22,6 +23,9 @@ class TaskController extends ApiController
                 'create' => ['POST'],
                 'update' => ['PUT', 'PATCH'],
                 'delete' => ['DELETE'],
+                'filter' => ['GET'],
+                'templates' => ['GET'],
+                'daily' => ['GET'],
             ],
         ];
 
@@ -102,6 +106,36 @@ class TaskController extends ApiController
         $this->ensureCanEdit($m);
         $m->delete();
         return ['success' => true];
+    }
+
+    public function actionFilter($date = null)
+    {
+        if (!$date) {
+            throw new BadRequestHttpException('Parameter "date" is required');
+        }
+        // TODO: повернути список задач за датою
+        return [
+            'date' => $date,
+            'items' => [], // замінити на реальні дані
+        ];
+    }
+
+    public function actionTemplates()
+    {
+        // TODO: повернути шаблони задач
+        return [
+            'items' => [], // замінити на реальні дані
+        ];
+    }
+
+    public function actionDaily()
+    {
+        // TODO: повернути задачі за today для поточного користувача
+        $today = date('Y-m-d');
+        return [
+            'date' => $today,
+            'items' => [], // замінити на реальні дані
+        ];
     }
 
     protected function findModel(int $id): Task
