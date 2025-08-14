@@ -12,10 +12,11 @@ use yii\db\ActiveRecord;
  * @property string $title
  * @property string|null $description
  * @property string|null $expected_result
- * @property bool $urgent
- * @property int|null $assigned_to
- * @property int|null $setter_id
- * @property string|null $deadline        // DATE (Y-m-d)
+ * @property int $urgent
+* @property int|null $assigned_to
+* @property int|null $setter_id
+* @property string|null $deadline        // DATE (Y-m-d)
+ * @property string|null $due_date       // DATETIME (Y-m-d H:i:s)
  * @property int|null $created_by
  * @property int|null $created_at
  * @property int|null $updated_at
@@ -41,8 +42,9 @@ class Result extends ActiveRecord
             [['description', 'expected_result'], 'string'],
             [['deadline'], 'date', 'format' => 'php:Y-m-d'],
             [['title'], 'string', 'max' => 255],
-            [['urgent'], 'boolean'],
-            [['urgent'], 'default', 'value' => false],
+            [['urgent'], 'default', 'value' => 0],
+            [['urgent'], 'integer', 'min' => 0, 'max' => 1],
+            [['due_date'], 'safe'],
             [['assigned_to'], 'exist', 'targetClass' => User::class, 'targetAttribute' => ['assigned_to' => 'id'], 'message' => 'Відповідальний користувач не знайдений.'],
             [['parent_id'], 'validateParent'],
         ];
@@ -66,7 +68,14 @@ class Result extends ActiveRecord
             return $this->assigned_to;
         };
         $fields['urgent'] = function () {
-            return (bool) $this->urgent;
+            return (int) $this->urgent;
+        };
+        $fields['due_date'] = function ($model) {
+            if (empty($model->due_date)) {
+                return null;
+            }
+            $dt = new \DateTime($model->due_date);
+            return $dt->format('d.m.Y H:i');
         };
 
         unset($fields['expected_result'], $fields['assigned_to']);
@@ -135,11 +144,23 @@ class Result extends ActiveRecord
     }
     public function beforeSave($insert)
     {
+        if (!parent::beforeSave($insert)) {
+            return false;
+        }
+
+        if (!empty($this->due_date)) {
+            $dt = \DateTime::createFromFormat('d.m.Y H:i', $this->due_date);
+            if ($dt) {
+                $this->due_date = $dt->format('Y-m-d H:i:s');
+            }
+        }
+
         $now = time();
         if ($insert) {
             $this->created_at = $now;
         }
         $this->updated_at = $now;
-        return parent::beforeSave($insert);
+
+        return true;
     }
 }
