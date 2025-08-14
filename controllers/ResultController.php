@@ -80,6 +80,7 @@ class ResultController extends ApiController
         $m->load($data, '');
 
         $m->urgent = isset($data['urgent']) ? filter_var($data['urgent'], FILTER_VALIDATE_BOOLEAN) : false;
+        $m->is_done = isset($data['is_done']) ? filter_var($data['is_done'], FILTER_VALIDATE_BOOLEAN) : false;
         if (isset($data['responsible_id'])) {
             $m->assigned_to = (int) $data['responsible_id'];
         }
@@ -105,6 +106,9 @@ class ResultController extends ApiController
         $m->load($data, '');
 
         $m->urgent = isset($data['urgent']) ? filter_var($data['urgent'], FILTER_VALIDATE_BOOLEAN) : false;
+        if (array_key_exists('is_done', $data)) {
+            $m->is_done = filter_var($data['is_done'], FILTER_VALIDATE_BOOLEAN);
+        }
         if (isset($data['responsible_id'])) {
             $m->assigned_to = (int) $data['responsible_id'];
         }
