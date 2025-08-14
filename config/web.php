@@ -19,6 +19,22 @@ return [
         'response' => [
             'format' => Response::FORMAT_JSON,
             'charset' => 'UTF-8',
+            'on beforeSend' => function ($event) {
+                $response = $event->sender;
+                $origin = Yii::$app->request->headers->get('Origin');
+                $allowed = [
+                    'https://tasks.fineko.space',
+                    'https://ftasks.local',
+                    'http://ftasks.local',
+                    'http://localhost:3000',
+                ];
+                if ($origin && in_array($origin, $allowed, true)) {
+                    $headers = $response->headers;
+                    $headers->set('Access-Control-Allow-Origin', $origin);
+                    $headers->set('Access-Control-Allow-Credentials', 'true');
+                    $headers->set('Vary', 'Origin');
+                }
+            },
         ],
         'user' => [
             'identityClass' => app\models\User::class,
@@ -68,6 +84,8 @@ return [
                 'POST results/<id:\d+>/complete' => 'result/complete',
 
                 'GET tasks/filter' => 'task/filter',
+                'GET task/filter' => 'task/filter',
+                'GET templates' => 'task/templates',
                 'GET tasks/templates' => 'task/templates',
                 'GET,POST tasks/daily' => 'task/daily',
                 'GET tasks' => 'task/index',
@@ -93,7 +111,7 @@ return [
             ],
             'Access-Control-Request-Method' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
             'Access-Control-Request-Headers' => ['Authorization', 'Content-Type', 'X-Requested-With'],
-            'Access-Control-Allow-Credentials' => false,
+            'Access-Control-Allow-Credentials' => true,
             'Access-Control-Max-Age' => 86400,
             'Access-Control-Expose-Headers' => ['Content-Type'],
         ],
