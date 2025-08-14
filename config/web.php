@@ -73,6 +73,8 @@ return [
                 'POST auth/request-password-reset' => 'auth/request-password-reset',
                 'POST auth/reset-password' => 'auth/reset-password',
 
+                'GET instructions' => 'instruction/index',
+
                 'GET users' => 'user/index',
 
                 'GET results' => 'result/index',
