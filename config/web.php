@@ -95,6 +95,7 @@ return [
                 'POST tasks' => 'task/create',
                 'PUT,PATCH tasks/<id:\d+>' => 'task/update',
                 'DELETE tasks/<id:\d+>' => 'task/delete',
+                'POST business-processes' => 'business-process/create',
 
                 'POST telegram/webhook' => 'telegram/webhook',
                 'GET telegram/health' => 'telegram/health',
