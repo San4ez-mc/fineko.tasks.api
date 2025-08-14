@@ -33,8 +33,9 @@ class ResultsApiCest
         $data = [
             'title' => 'Api test',
             'final_result' => 'Done',
-            'urgent' => true,
-            'due_date' => '22.03.1993 12:32',
+            'urgent' => 1,
+            'date' => '22.03.2099',
+            'due_date' => '22.03.2099 12:32',
             'description' => 'Desc',
             'responsible_id' => 1,
         ];

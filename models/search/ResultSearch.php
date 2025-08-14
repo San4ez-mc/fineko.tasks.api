@@ -54,13 +54,13 @@ class ResultSearch extends Model
         }
 
         if ($this->dueFrom) {
-            $query->andWhere(['>=', 'deadline', $this->dueFrom]);
+            $query->andWhere(['>=', 'date', $this->dueFrom]);
         }
         if ($this->dueTo) {
-            $query->andWhere(['<=', 'deadline', $this->dueTo]);
+            $query->andWhere(['<=', 'date', $this->dueTo]);
         }
 
-        $query->orderBy(['deadline' => SORT_ASC, 'id' => SORT_DESC]);
+        $query->orderBy(['date' => SORT_ASC, 'id' => SORT_DESC]);
 
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
