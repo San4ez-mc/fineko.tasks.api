@@ -119,6 +119,9 @@ class Result extends ActiveRecord
         $fields['is_completed'] = function () {
             return $this->completed_at !== null;
         };
+        $fields['is_done'] = function () {
+            return $this->completed_at !== null;
+        };
 
         return $fields;
     }
