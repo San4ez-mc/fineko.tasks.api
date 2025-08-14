@@ -94,6 +94,9 @@ return [
                 'PUT,PATCH tasks/<id:\d+>' => 'task/update',
                 'DELETE tasks/<id:\d+>' => 'task/delete',
 
+                'POST telegram/webhook' => 'telegram/webhook',
+                'GET telegram/health' => 'telegram/health',
+
                 // catch‑all preflight
                 ['pattern' => '<path:.*>', 'route' => 'site/options', 'verb' => 'OPTIONS'],
             ],
