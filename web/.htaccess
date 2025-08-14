@@ -1,16 +1,6 @@
-# === Core ===
-Options FollowSymLinks
-IndexIgnore */*
 RewriteEngine On
+RewriteBase /backend/web/
 
-# Якщо є статичні файли — віддавати напряму
-RewriteCond %{REQUEST_FILENAME} -f [OR]
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
-
-# 1) ВАЖЛИВО: пропускаємо preflight (OPTIONS) у front controller
-RewriteCond %{REQUEST_METHOD} OPTIONS
-RewriteRule ^ index.php [L]
-
-# 2) Все інше — у Yii2 front controller
-RewriteRule ^ index.php [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.php [L]

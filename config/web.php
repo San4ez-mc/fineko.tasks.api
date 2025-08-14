@@ -49,6 +49,7 @@ return [
         ],
         'urlManager' => [
             'enablePrettyUrl' => true,
+            'enableStrictParsing' => false,
             'showScriptName' => false,
             'rules' => [
                 'POST auth/login' => 'auth/login',
@@ -65,6 +66,15 @@ return [
                 'PATCH results/<id:\d+>' => 'result/update',
                 'DELETE results/<id:\d+>' => 'result/delete',
                 'POST results/<id:\d+>/complete' => 'result/complete',
+
+                'GET tasks/filter' => 'task/filter',
+                'GET tasks/templates' => 'task/templates',
+                'GET tasks/daily' => 'task/daily',
+                'GET tasks' => 'task/index',
+                'GET tasks/<id:\d+>' => 'task/view',
+                'POST tasks' => 'task/create',
+                'PUT,PATCH tasks/<id:\d+>' => 'task/update',
+                'DELETE tasks/<id:\d+>' => 'task/delete',
 
                 // catch‑all preflight
                 ['pattern' => '<path:.*>', 'route' => 'site/options', 'verb' => 'OPTIONS'],
