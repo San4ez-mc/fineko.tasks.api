@@ -86,7 +86,7 @@ class Result extends ActiveRecord
             return $this->assigned_to;
         };
         $fields['urgent'] = function () {
-            return (bool) $this->urgent;
+            return (int) (bool) $this->urgent;
         };
         $fields['is_done'] = function () {
             return (bool) $this->is_done;
