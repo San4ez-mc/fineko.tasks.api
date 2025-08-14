@@ -42,6 +42,7 @@ class Result extends ActiveRecord
             [['description', 'expected_result'], 'string'],
             [['date'], 'date', 'format' => 'php:d.m.Y'],
             [['title'], 'string', 'max' => 255],
+            [['urgent'], 'boolean'],
             [['urgent'], 'default', 'value' => 0],
             [['urgent'], 'integer', 'min' => 0, 'max' => 1],
             [['due_date', 'date'], 'safe'],
@@ -84,7 +85,7 @@ class Result extends ActiveRecord
             return $this->assigned_to;
         };
         $fields['urgent'] = function () {
-            return (int) $this->urgent;
+            return (bool) $this->urgent;
         };
         $fields['due_date'] = function ($model) {
             if (empty($model->due_date)) {
