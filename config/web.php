@@ -69,7 +69,7 @@ return [
 
                 'GET tasks/filter' => 'task/filter',
                 'GET tasks/templates' => 'task/templates',
-                'GET tasks/daily' => 'task/daily',
+                'GET,POST tasks/daily' => 'task/daily',
                 'GET tasks' => 'task/index',
                 'GET tasks/<id:\d+>' => 'task/view',
                 'POST tasks' => 'task/create',

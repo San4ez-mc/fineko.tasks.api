@@ -33,7 +33,7 @@ class TaskController extends ApiController
                 'delete' => ['DELETE'],
                 'filter' => ['GET'],
                 'templates' => ['GET'],
-                'daily' => ['GET'],
+                'daily' => ['GET', 'POST'],
             ],
         ];
 
