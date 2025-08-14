@@ -13,9 +13,8 @@ use yii\db\ActiveRecord;
  * @property string|null $description
  * @property string|null $expected_result
  * @property int $urgent
- * @property int $is_done
-* @property int|null $assigned_to
-* @property int|null $setter_id
+ * @property int|null $assigned_to
+ * @property int|null $setter_id
  * @property string|null $date           // DATE (Y-m-d)
  * @property string|null $due_date       // DATETIME (Y-m-d H:i:s)
  * @property int|null $created_by
@@ -43,9 +42,9 @@ class Result extends ActiveRecord
             [['description', 'expected_result'], 'string'],
             [['date'], 'date', 'format' => 'php:d.m.Y'],
             [['title'], 'string', 'max' => 255],
-            [['urgent', 'is_done'], 'boolean'],
-            [['urgent', 'is_done'], 'default', 'value' => 0],
-            [['urgent', 'is_done'], 'integer', 'min' => 0, 'max' => 1],
+            [['urgent'], 'boolean'],
+            [['urgent'], 'default', 'value' => 0],
+            [['urgent'], 'integer', 'min' => 0, 'max' => 1],
             [['due_date', 'date'], 'safe'],
             [['due_date'], 'validateNotPast'],
             [['date'], 'validateNotPast'],
@@ -87,9 +86,6 @@ class Result extends ActiveRecord
         };
         $fields['urgent'] = function () {
             return (bool) $this->urgent;
-        };
-        $fields['is_done'] = function () {
-            return (bool) $this->is_done;
         };
         $fields['due_date'] = function ($model) {
             if (empty($model->due_date)) {

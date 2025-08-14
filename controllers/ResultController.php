@@ -80,7 +80,10 @@ class ResultController extends ApiController
         $m->load($data, '');
 
         $m->urgent = isset($data['urgent']) ? filter_var($data['urgent'], FILTER_VALIDATE_BOOLEAN) : false;
-        $m->is_done = isset($data['is_done']) ? filter_var($data['is_done'], FILTER_VALIDATE_BOOLEAN) : false;
+        if (array_key_exists('is_done', $data) || array_key_exists('is_completed', $data)) {
+            $flag = array_key_exists('is_done', $data) ? $data['is_done'] : $data['is_completed'];
+            $m->completed_at = filter_var($flag, FILTER_VALIDATE_BOOLEAN) ? time() : null;
+        }
         if (isset($data['responsible_id'])) {
             $m->assigned_to = (int) $data['responsible_id'];
         }
@@ -106,8 +109,9 @@ class ResultController extends ApiController
         $m->load($data, '');
 
         $m->urgent = isset($data['urgent']) ? filter_var($data['urgent'], FILTER_VALIDATE_BOOLEAN) : false;
-        if (array_key_exists('is_done', $data)) {
-            $m->is_done = filter_var($data['is_done'], FILTER_VALIDATE_BOOLEAN);
+        if (array_key_exists('is_done', $data) || array_key_exists('is_completed', $data)) {
+            $flag = array_key_exists('is_done', $data) ? $data['is_done'] : $data['is_completed'];
+            $m->completed_at = filter_var($flag, FILTER_VALIDATE_BOOLEAN) ? ($m->completed_at ?? time()) : null;
         }
         if (isset($data['responsible_id'])) {
             $m->assigned_to = (int) $data['responsible_id'];
@@ -143,8 +147,9 @@ class ResultController extends ApiController
 
         $data = Yii::$app->request->post();
 
-        if (array_key_exists('is_done', $data)) {
-            $m->completed_at = filter_var($data['is_done'], FILTER_VALIDATE_BOOLEAN) ? time() : null;
+        if (array_key_exists('is_done', $data) || array_key_exists('is_completed', $data)) {
+            $flag = array_key_exists('is_done', $data) ? $data['is_done'] : $data['is_completed'];
+            $m->completed_at = filter_var($flag, FILTER_VALIDATE_BOOLEAN) ? time() : null;
         } else {
             $m->completed_at = $m->completed_at === null ? time() : null;
         }
