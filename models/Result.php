@@ -53,6 +53,13 @@ class Result extends ActiveRecord
         ];
     }
 
+    public function attributes()
+    {
+        // Ensure "urgent" is recognized even if migrations adding the column
+        // haven't been applied yet to avoid Unknown Property errors.
+        return array_unique(array_merge(parent::attributes(), ['urgent']));
+    }
+
     public function validateParent($attribute)
     {
         if ($this->parent_id && (int) $this->parent_id === (int) $this->id) {
