@@ -15,7 +15,7 @@ use yii\db\ActiveRecord;
  * @property int $urgent
 * @property int|null $assigned_to
 * @property int|null $setter_id
-* @property string|null $deadline        // DATE (Y-m-d)
+ * @property string|null $date           // DATE (Y-m-d)
  * @property string|null $due_date       // DATETIME (Y-m-d H:i:s)
  * @property int|null $created_by
  * @property int|null $created_at
@@ -40,11 +40,13 @@ class Result extends ActiveRecord
             [['organization_id', 'title', 'expected_result', 'assigned_to'], 'required'],
             [['organization_id', 'created_by', 'created_at', 'updated_at', 'parent_id', 'completed_at', 'assigned_to', 'setter_id'], 'integer'],
             [['description', 'expected_result'], 'string'],
-            [['deadline'], 'date', 'format' => 'php:Y-m-d'],
+            [['date'], 'date', 'format' => 'php:d.m.Y'],
             [['title'], 'string', 'max' => 255],
             [['urgent'], 'default', 'value' => 0],
             [['urgent'], 'integer', 'min' => 0, 'max' => 1],
-            [['due_date'], 'safe'],
+            [['due_date', 'date'], 'safe'],
+            [['due_date'], 'validateNotPast'],
+            [['date'], 'validateNotPast'],
             [['assigned_to'], 'exist', 'targetClass' => User::class, 'targetAttribute' => ['assigned_to' => 'id'], 'message' => 'Відповідальний користувач не знайдений.'],
             [['parent_id'], 'validateParent'],
         ];
@@ -54,6 +56,20 @@ class Result extends ActiveRecord
     {
         if ($this->parent_id && (int) $this->parent_id === (int) $this->id) {
             $this->addError($attribute, 'parent_id не може дорівнювати id самого результату.');
+        }
+    }
+
+    public function validateNotPast($attribute)
+    {
+        if (empty($this->$attribute)) {
+            return;
+        }
+        $isDueDate = $attribute === 'due_date';
+        $format = $isDueDate ? 'd.m.Y H:i' : 'd.m.Y';
+        $dt = \DateTime::createFromFormat($format, $this->$attribute);
+        $now = $isDueDate ? new \DateTime() : new \DateTime('today');
+        if ($dt && $dt < $now) {
+            $this->addError($attribute, 'Дата не може бути в минулому.');
         }
     }
 
@@ -76,6 +92,13 @@ class Result extends ActiveRecord
             }
             $dt = new \DateTime($model->due_date);
             return $dt->format('d.m.Y H:i');
+        };
+        $fields['date'] = function ($model) {
+            if (empty($model->date)) {
+                return null;
+            }
+            $dt = new \DateTime($model->date);
+            return $dt->format('d.m.Y');
         };
 
         unset($fields['expected_result'], $fields['assigned_to']);
@@ -152,6 +175,12 @@ class Result extends ActiveRecord
             $dt = \DateTime::createFromFormat('d.m.Y H:i', $this->due_date);
             if ($dt) {
                 $this->due_date = $dt->format('Y-m-d H:i:s');
+            }
+        }
+        if (!empty($this->date)) {
+            $dt = \DateTime::createFromFormat('d.m.Y', $this->date);
+            if ($dt) {
+                $this->date = $dt->format('Y-m-d');
             }
         }
 
