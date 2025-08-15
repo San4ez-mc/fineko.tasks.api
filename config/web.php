@@ -94,7 +94,8 @@ return [
 
                 'GET tasks/filter' => 'task/filter',
                 'GET task/filter' => 'task/filter',
-                'GET templates' => 'task/templates',
+                'GET templates' => 'template/index',
+                'POST templates' => 'template/create',
                 'GET tasks/templates' => 'task/templates',
                 'GET,POST tasks/daily' => 'task/daily',
                 'GET tasks' => 'task/index',
