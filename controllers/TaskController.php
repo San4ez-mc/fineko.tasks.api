@@ -8,6 +8,7 @@ use yii\filters\VerbFilter;
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
+use yii\httpclient\Client;
 
 class TaskController extends ApiController
 {
@@ -89,6 +90,7 @@ class TaskController extends ApiController
         $m->load(Yii::$app->request->post(), '');
 
         if ($m->save()) {
+            $this->notifyServer($m);
             return $m->toArray([], ['assignee', 'setter']);
         }
         Yii::$app->response->statusCode = 422;
@@ -144,6 +146,23 @@ class TaskController extends ApiController
             'date' => $today,
             'items' => [], // замінити на реальні дані
         ];
+    }
+
+    protected function notifyServer(Task $task): void
+    {
+        $url = Yii::$app->params['taskNotifyUrl'] ?? null;
+        if (!$url) {
+            return;
+        }
+        try {
+            (new Client())->createRequest()
+                ->setMethod('POST')
+                ->setUrl($url)
+                ->setData($task->toArray())
+                ->send();
+        } catch (\Throwable $e) {
+            Yii::error('Failed to notify task creation: ' . $e->getMessage(), 'application');
+        }
     }
 
     protected function findModel(int $id): Task
