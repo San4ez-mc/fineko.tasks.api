@@ -22,4 +22,11 @@ class Task extends ActiveRecord
             [['title'], 'string', 'max' => 255],
         ];
     }
+
+    public function getComments()
+    {
+        return $this->hasMany(TaskComment::class, ['task_id' => 'id'])
+            ->andWhere(['parent_id' => null])
+            ->orderBy(['id' => SORT_ASC]);
+    }
 }
