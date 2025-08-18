@@ -50,33 +50,43 @@ class TaskController extends Controller
         }
 
         $date = Yii::$app->request->get('date');
-        // інші фільтри поки опускаю – залиш як було у твоїй реалізації,
-        // нижче повертаю базовий приклад
         $q = Task::find();
         if ($date) {
+            // якщо у Task інша назва поля дати — заміни тут один раз
             $q->andWhere(['planned_date' => $date]);
         }
 
         $rows = $q->orderBy(['id' => SORT_DESC])->all();
 
         $tasks = array_map(function (Task $t) {
-            return [
+            $out = [
                 'id' => (int) $t->id,
                 'title' => (string) $t->title,
-                'status' => (string) $t->status,
-                'planned_date' => (string) $t->planned_date,
-                'type' => (string) $t->type,
-                'expected_time' => (int) $t->expected_time,
-                'actual_time' => (int) $t->actual_time,
-                'expected_result' => (string) $t->expected_result,
+                'status' => (string) ($t->status ?? 'new'),
+                'type' => (string) ($t->type ?? ''),
+                'expected_time' => (int) ($t->expected_time ?? 0),
+                'actual_time' => (int) ($t->actual_time ?? 0),
+                'expected_result' => (string) ($t->expected_result ?? ''),
                 'result' => (string) ($t->result ?? ''),
-                'description' => (string) $t->description,
-                'manager' => (string) $t->manager,
+                'manager' => (string) ($t->manager ?? ''),
                 'executor_id' => $t->executor_id ? (int) $t->executor_id : null,
                 'result_id' => $t->result_id ? (int) $t->result_id : null,
-                'result_title' => $t->result ? (string) $t->result->title : '',
-                'comments' => [], // фронт тягне окремо або через іншу дію; тут можна зібрати дерево при потребі
+                'result_title' => method_exists($t, 'getResult') && $t->result ? (string) $t->result->title : '',
+                'comments' => [],
             ];
+
+            // ці поля додаємо тільки якщо вони існують у схемі
+            if ($t->hasAttribute('planned_date')) {
+                $out['planned_date'] = (string) $t->planned_date;
+            }
+            if ($t->hasAttribute('description')) {
+                $out['description'] = (string) $t->description;
+            }
+            // для сумісності з фронтом (він очікує .dueDate):
+            $out['planned_date'] = $out['planned_date'] ?? '';
+            $out['dueDate'] = $out['planned_date'];
+
+            return $out;
         }, $rows);
 
         return ['tasks' => $tasks];
@@ -102,7 +112,18 @@ class TaskController extends Controller
             throw new BadRequestHttpException('Field is required');
         }
 
+        // оновлюємо тільки дозволені/існуючі поля
+        if (!$task->hasAttribute($field)) {
+            return ['success' => false, 'message' => "Unknown field: {$field}"];
+        }
+
         $value = $body['value'] ?? null;
+
+        // якщо це comments — їх краще зберігати через окремий контролер task-comment (поки просто ігноруємо)
+        if ($field === 'comments') {
+            return ['success' => true]; // фронт одразу оновлює локальний стейт
+        }
+
         $task->$field = $value;
 
         if (!$task->validate([$field])) {
@@ -147,18 +168,25 @@ class TaskController extends Controller
         $t = Yii::$app->db->beginTransaction();
         try {
             $task = new Task();
-            $task->title = trim((string) ($data['title'] ?? ''));
-            $task->type = (string) ($data['type'] ?? 'неважлива нетермінова');
-            $task->planned_date = (string) ($data['planned_date'] ?? null);
-            $task->expected_time = (int) ($data['expected_time'] ?? 0);
-            $task->actual_time = (int) ($data['actual_time'] ?? 0);
-            $task->expected_result = (string) ($data['expected_result'] ?? '');
-            $task->description = (string) ($data['description'] ?? '');
-            $task->manager = (string) ($data['manager'] ?? '');
-            $task->executor_id = !empty($data['executor_id']) ? (int) $data['executor_id'] : null;
-            $task->result_id = !empty($data['result_id']) ? (int) $data['result_id'] : null;
 
-            if (empty($task->status)) {
+            // безпечне присвоєння тільки існуючих атрибутів
+            $this->setIfHas($task, 'title', trim((string) ($data['title'] ?? '')));
+            $this->setIfHas($task, 'type', (string) ($data['type'] ?? 'неважлива нетермінова'));
+            $this->setIfHas($task, 'planned_date', (string) ($data['planned_date'] ?? null));
+            $this->setIfHas($task, 'expected_time', (int) ($data['expected_time'] ?? 0));
+            $this->setIfHas($task, 'actual_time', (int) ($data['actual_time'] ?? 0));
+            $this->setIfHas($task, 'expected_result', (string) ($data['expected_result'] ?? ''));
+            $this->setIfHas($task, 'manager', (string) ($data['manager'] ?? ''));
+            $this->setIfHas($task, 'executor_id', !empty($data['executor_id']) ? (int) $data['executor_id'] : null);
+            $this->setIfHas($task, 'result_id', !empty($data['result_id']) ? (int) $data['result_id'] : null);
+
+            // поле description є не завжди — ставимо лише якщо воно існує
+            if ($task->hasAttribute('description')) {
+                $task->description = (string) ($data['description'] ?? '');
+            }
+
+            // дефолтний статус
+            if ($task->hasAttribute('status') && empty($task->status)) {
                 $task->status = 'new';
             }
 
@@ -190,11 +218,19 @@ class TaskController extends Controller
         } catch (\Throwable $e) {
             $t->rollBack();
             Yii::error('POST /task/daily failed: ' . $e->getMessage(), __METHOD__);
-            // у DEV повернемо деталі, у PROD — загальне повідомлення
             if (defined('YII_DEBUG') && YII_DEBUG) {
                 return ['success' => false, 'message' => $e->getMessage(), 'trace' => $e->getTraceAsString()];
             }
             return ['success' => false, 'message' => 'Internal error'];
+        }
+    }
+
+    // ===================== helpers =====================
+
+    private function setIfHas(Task $task, string $attr, $value): void
+    {
+        if ($task->hasAttribute($attr)) {
+            $task->$attr = $value;
         }
     }
 
@@ -244,21 +280,29 @@ class TaskController extends Controller
 
     private function serializeTask(Task $t): array
     {
-        return [
+        $out = [
             'id' => (int) $t->id,
             'title' => (string) $t->title,
-            'status' => (string) $t->status,
-            'planned_date' => (string) $t->planned_date,
-            'type' => (string) $t->type,
-            'expected_time' => (int) $t->expected_time,
-            'actual_time' => (int) $t->actual_time,
-            'expected_result' => (string) $t->expected_result,
+            'status' => (string) ($t->status ?? 'new'),
+            'type' => (string) ($t->type ?? ''),
+            'expected_time' => (int) ($t->expected_time ?? 0),
+            'actual_time' => (int) ($t->actual_time ?? 0),
+            'expected_result' => (string) ($t->expected_result ?? ''),
             'result' => (string) ($t->result ?? ''),
-            'description' => (string) $t->description,
-            'manager' => (string) $t->manager,
+            'manager' => (string) ($t->manager ?? ''),
             'executor_id' => $t->executor_id ? (int) $t->executor_id : null,
             'result_id' => $t->result_id ? (int) $t->result_id : null,
-            'result_title' => $t->result ? (string) $t->result->title : '',
+            'result_title' => method_exists($t, 'getResult') && $t->result ? (string) $t->result->title : '',
         ];
+
+        if ($t->hasAttribute('planned_date')) {
+            $out['planned_date'] = (string) $t->planned_date;
+            $out['dueDate'] = $out['planned_date']; // для фронта
+        }
+        if ($t->hasAttribute('description')) {
+            $out['description'] = (string) $t->description;
+        }
+
+        return $out;
     }
 }
