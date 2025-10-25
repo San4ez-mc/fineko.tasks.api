@@ -85,7 +85,7 @@ class Result extends ActiveRecord
             return $this->assigned_to;
         };
         $fields['urgent'] = function () {
-            return (bool) $this->urgent;
+            return (int) (bool) $this->urgent;
         };
         $fields['due_date'] = function ($model) {
             if (empty($model->due_date)) {
